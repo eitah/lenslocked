@@ -11,38 +11,41 @@ import (
 var homeView *views.View
 var contactView *views.View
 var faqView *views.View
+var fourOhFourView *views.View
 
 func home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := homeView.Template.ExecuteTemplate(w, homeView.Layout, nil); err != nil {
-		panic(err)
-	}
+	must(homeView.Render(w, nil))
 }
 
 func contact(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := contactView.Template.ExecuteTemplate(w, contactView.Layout, nil); err != nil {
-		panic(err)
-	}
+	must(contactView.Render(w, nil))
 }
 
 func faq(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := faqView.Template.ExecuteTemplate(w, faqView.Layout, nil); err != nil {
-		panic(err)
-	}
+	must(faqView.Render(w, nil))
+
 }
 
 func fourOhFour(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintln(w, "<h2>Page not found</h2>")
+	must(fourOhFourView.Render(w, nil))
+}
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }
 
 func main() {
 	homeView = views.NewView("bootstrap", "views/home.gohtml")
 	contactView = views.NewView("bootstrap", "views/contact.gohtml")
 	faqView = views.NewView("bootstrap", "views/faq.gohtml")
+	fourOhFourView = views.NewView("bootstrap", "views/fourohfour.gohtml")
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", home)
