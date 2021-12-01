@@ -1,0 +1,7 @@
+<h1>Hello, {{.Name}}!</h1>
+<p>My name is {{ .AI }}</p>
+<p>My age is {{ .Age }}</p>
+{{ range $key, $value := .Fishy }}
+<p>My head is {{ $key }}</p>
+<p>My tail is {{ $value }}</p>
+{{ end }}
