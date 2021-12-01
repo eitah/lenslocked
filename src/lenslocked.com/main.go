@@ -8,11 +8,14 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var homeView *views.View
-var contactView *views.View
-var faqView *views.View
-var fourOhFourView *views.View
-var payMeMoneyView *views.View
+var (
+	homeView       *views.View
+	contactView    *views.View
+	faqView        *views.View
+	fourOhFourView *views.View
+	payMeMoneyView *views.View
+	signupView     *views.View
+)
 
 func home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -35,6 +38,12 @@ func payMeMoney(w http.ResponseWriter, r *http.Request) {
 	must(payMeMoneyView.Render(w, nil))
 }
 
+func signup(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	must(signupView.Render(w, nil))
+
+}
+
 func fourOhFour(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -53,12 +62,14 @@ func main() {
 	faqView = views.NewView("bootstrap", "views/faq.gohtml")
 	fourOhFourView = views.NewView("bootstrap", "views/fourohfour.gohtml")
 	payMeMoneyView = views.NewView("bootstrap-nonav", "views/pay-me-money.gohtml")
+	signupView = views.NewView("bootstrap", "views/signup.gohtml")
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", home)
 	r.HandleFunc("/contact", contact)
 	r.HandleFunc("/faq", faq)
 	r.HandleFunc("/pay-me-money", payMeMoney)
+	r.HandleFunc("/signup", signup)
 
 	r.NotFoundHandler = http.HandlerFunc(fourOhFour)
 	fmt.Println("Server starting on :3000...")
