@@ -42,9 +42,9 @@ func main() {
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers()
 
-	faqView = views.NewView("bootstrap", "views/faq.gohtml")
-	fourOhFourView = views.NewView("bootstrap", "views/fourohfour.gohtml")
-	payMeMoneyView = views.NewView("bootstrap-nonav", "views/pay-me-money.gohtml")
+	faqView = views.NewView("bootstrap", "faq")
+	fourOhFourView = views.NewView("bootstrap", "fourohfour")
+	payMeMoneyView = views.NewView("bootstrap-nonav", "pay-me-money")
 
 	r := mux.NewRouter()
 	r.Handle("/", staticC.Home).Methods("GET")
