@@ -1,10 +1,19 @@
 package main
 
+// this is what we used initially
+// _ "github.com/lib/pq"
 import (
+	"bufio"
 	"database/sql"
 	"fmt"
+	"math/rand"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 
-	_ "github.com/lib/pq"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
 const (
@@ -14,8 +23,29 @@ const (
 	dbname = "lenslocked_itah"
 )
 
+type User struct {
+	gorm.Model
+	Name  string
+	Email string `gorm:"not null;unique_index"`
+}
+
 func main() {
-	db := openConnection()
+	// db := openSQLConnection()
+
+	db := openGormConnection()
+	defer db.Close()
+
+	// With logging enabled we will start to see output like the following when SQL statements are run.
+	// CREATE TABLE "users"...
+	db.LogMode(true)
+
+	// getAUser(db)
+	getAMinUser(db)
+
+	// AutoMigrate will only create things that dont already exists, so if you already had a table named users it would not delete that table and attempt to make a new one. Likewise, it will not delete a column or replace it with a new type as these both have the potential to delete data unintentionally. Instead you will need to handle those types of migrations on your own.
+	// db.AutoMigrate(&User{})
+
+	// seedUsers(db)
 
 	// populateSingleRowData(db)
 	// populateOrderData(db)
@@ -26,20 +56,62 @@ func main() {
 	// dropAllTables(db)
 }
 
-func dropAllTables(db *sql.DB) {
-	_, err := db.Exec("Drop table orders;")
-	if err != nil {
-		panic(err)
+func getAUser(db *gorm.DB) {
+	var u User
+	db.First(&u)
+	if db.Error != nil {
+		panic(db.Error)
 	}
-	_, err = db.Exec("Drop table users_pk;")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Dropped all tables goodbye")
-	db.Close()
+	fmt.Println(u)
 }
 
-func openConnection() *sql.DB {
+func getAMinUser(db *gorm.DB) {
+	var u User
+	maxId := 3
+	db.Where("id <= ?", maxId).First(&u)
+	if db.Error != nil {
+		panic(db.Error)
+	}
+	fmt.Println(u)
+}
+
+func openGormConnection() *gorm.DB {
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", host, port, user, dbname)
+
+	db, err := gorm.Open("postgres", psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+	return db
+}
+
+func seedUsers(db *gorm.DB) {
+	name, email := getInfo()
+	u := &User{
+		Name:  name,
+		Email: email,
+	}
+	must(db.Create(u).Error)
+	fmt.Printf("%+v\n", u)
+}
+
+func getInfo() (name, email string) {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("What is your name?")
+	name, _ = reader.ReadString('\n')
+	name = strings.TrimSuffix(name, "\n")
+	emailHosts := []string{"yahoo", "gmail", "hotmail", "comcast", "buzzmail", "tmail", "bmail"}
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+	myRand := r1.Intn(6)
+	fmt.Println(myRand)
+	myHost := emailHosts[myRand]
+	fillerNumber := strconv.Itoa(r1.Intn(1000))
+	email = name + fillerNumber + "@" + myHost + ".com"
+	return name, email
+}
+
+func openSQLConnection() *sql.DB {
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", host, port, user, dbname)
 
 	db, err := sql.Open("postgres", psqlInfo)
@@ -143,6 +215,19 @@ func joinMultipleTables(db *sql.DB) {
 		rows.Scan(&id, &email, &name, &order_id, &order_amount, &order_description)
 		fmt.Printf("ID %d, Name %s, email %s, oid %d, order_amount %s, order_description %s\n", id, name, email, order_id, order_amount, order_description)
 	}
+	db.Close()
+}
+
+func dropAllTables(db *sql.DB) {
+	_, err := db.Exec("Drop table orders;")
+	if err != nil {
+		panic(err)
+	}
+	_, err = db.Exec("Drop table users_pk;")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Dropped all tables goodbye")
 	db.Close()
 }
 
