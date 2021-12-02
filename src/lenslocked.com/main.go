@@ -10,21 +10,8 @@ import (
 )
 
 var (
-	faqView        *views.View
 	fourOhFourView *views.View
-	payMeMoneyView *views.View
 )
-
-func faq(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	must(faqView.Render(w, nil))
-
-}
-
-func payMeMoney(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	must(payMeMoneyView.Render(w, nil))
-}
 
 func fourOhFour(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
@@ -41,18 +28,18 @@ func must(err error) {
 func main() {
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers()
+	galleriesC := controllers.NewGalleries()
 
-	faqView = views.NewView("bootstrap", "faq")
 	fourOhFourView = views.NewView("bootstrap", "fourohfour")
-	payMeMoneyView = views.NewView("bootstrap-nonav", "pay-me-money")
 
 	r := mux.NewRouter()
 	r.Handle("/", staticC.Home).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
-	r.HandleFunc("/faq", faq).Methods("GET")
-	r.HandleFunc("/pay-me-money", payMeMoney).Methods("GET")
+	r.Handle("/faq", staticC.Faq).Methods("GET")
+	r.Handle("/pay-me-money", staticC.PayMeMoney).Methods("GET")
 	r.HandleFunc("/signup", usersC.New).Methods("GET")
 	r.HandleFunc("/signup", usersC.Create).Methods("POST")
+	r.HandleFunc("/galleries/new", galleriesC.New).Methods("GET")
 
 	r.NotFoundHandler = http.HandlerFunc(fourOhFour)
 	fmt.Println("Server starting on :3000...")
