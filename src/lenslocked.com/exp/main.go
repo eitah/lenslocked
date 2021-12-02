@@ -21,8 +21,22 @@ func main() {
 	// populateOrderData(db)
 	// readSingleRowOfData(db)
 	// readMultipleRowsOfData(db)
-	joinMultipleTables(db)
+	// joinMultipleTables(db)
 
+	// dropAllTables(db)
+}
+
+func dropAllTables(db *sql.DB) {
+	_, err := db.Exec("Drop table orders;")
+	if err != nil {
+		panic(err)
+	}
+	_, err = db.Exec("Drop table users_pk;")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Dropped all tables goodbye")
+	db.Close()
 }
 
 func openConnection() *sql.DB {
