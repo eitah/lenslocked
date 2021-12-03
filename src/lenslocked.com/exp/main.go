@@ -29,6 +29,13 @@ type User struct {
 	Email string `gorm:"not null;unique_index"`
 }
 
+type Order struct {
+	gorm.Model
+	UserID      uint
+	Amount      int
+	Description string
+}
+
 func main() {
 	// db := openSQLConnection()
 
@@ -37,16 +44,18 @@ func main() {
 
 	// With logging enabled we will start to see output like the following when SQL statements are run.
 	// CREATE TABLE "users"...
-	// db.LogMode(true)
+	db.LogMode(true)
 
 	// getAUser(db)
 	// getAMinUser(db)
-	searchByUserExample(db)
+	// searchByUserExample(db)
+	// searchForMultipleUsers(db)
 
 	// AutoMigrate will only create things that dont already exists, so if you already had a table named users it would not delete that table and attempt to make a new one. Likewise, it will not delete a column or replace it with a new type as these both have the potential to delete data unintentionally. Instead you will need to handle those types of migrations on your own.
-	// db.AutoMigrate(&User{})
+	db.AutoMigrate(&User{}, &Order{})
 
 	// seedUsers(db)
+	seedOrders(db)
 
 	// populateSingleRowData(db)
 	// populateOrderData(db)
@@ -96,6 +105,27 @@ func seedUsers(db *gorm.DB) {
 	fmt.Printf("%+v\n", u)
 }
 
+func seedOrders(db *gorm.DB) {
+	var user User
+	db.First(&user)
+	if db.Error != nil {
+		panic(db.Error)
+	}
+	createOrder(db, user, 1001, "Fake Description #1")
+	createOrder(db, user, 9999, "Fake Description #2")
+	createOrder(db, user, 8800, "Fake Description #3")
+
+}
+
+func createOrder(db *gorm.DB, user User, amount int, desc string) {
+	db.Create(&Order{
+		UserID: user.ID, Amount: amount, Description: desc,
+	})
+	if db.Error != nil {
+		panic(db.Error)
+	}
+}
+
 func getInfo() (name, email string) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("What is your name?")
@@ -134,6 +164,18 @@ func searchByUserExample(db *gorm.DB) {
 			fmt.Printf("User %s not found\n", u.Name)
 		}
 	}
+}
+
+func searchForMultipleUsers(db *gorm.DB) {
+	var users []User
+	db.Find(&users)
+	if db.Error != nil {
+		panic(db.Error)
+	}
+
+	// this found all users, or you can filter by passing in users.
+	fmt.Printf("Retrieved %d users.", len(users))
+	fmt.Println(users)
 }
 
 func openSQLConnection() *sql.DB {
