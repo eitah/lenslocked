@@ -37,10 +37,11 @@ func main() {
 
 	// With logging enabled we will start to see output like the following when SQL statements are run.
 	// CREATE TABLE "users"...
-	db.LogMode(true)
+	// db.LogMode(true)
 
 	// getAUser(db)
-	getAMinUser(db)
+	// getAMinUser(db)
+	searchByUserExample(db)
 
 	// AutoMigrate will only create things that dont already exists, so if you already had a table named users it would not delete that table and attempt to make a new one. Likewise, it will not delete a column or replace it with a new type as these both have the potential to delete data unintentionally. Instead you will need to handle those types of migrations on your own.
 	// db.AutoMigrate(&User{})
@@ -109,6 +110,30 @@ func getInfo() (name, email string) {
 	fillerNumber := strconv.Itoa(r1.Intn(1000))
 	email = name + fillerNumber + "@" + myHost + ".com"
 	return name, email
+}
+
+func searchByUserExample(db *gorm.DB) {
+	validU := User{
+		Name: "shera",
+	}
+	invalidU := User{
+		Name: "notARealUser",
+	}
+	for _, u := range []User{validU, invalidU} {
+		db.Where(u).First(&u)
+		if db.Error != nil {
+			panic(db.Error)
+		}
+		var isReal bool
+		if u.ID != 0 {
+			isReal = true
+		}
+		if isReal {
+			fmt.Printf("User %s found %+v\n", u.Name, u)
+		} else {
+			fmt.Printf("User %s not found\n", u.Name)
+		}
+	}
 }
 
 func openSQLConnection() *sql.DB {
