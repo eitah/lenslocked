@@ -76,6 +76,27 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintln(w, user)
+	cookie := http.Cookie{
+		Name:  "email",
+		Value: user.Email,
+	}
+	http.SetCookie(w, &cookie)
 
+	fmt.Fprintln(w, user)
+}
+
+// Five main attack vectors for cookies in jons course
+// cookie tampering
+// a db leak that lets users make fake cookies
+// cross site scripting
+// cookie theft via packet sniffing
+// cookie theft via physical access to the device with the cookie.
+
+// CookieTest is a dev method to see what our cookies like without needing to muck around in devtools
+func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("email")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	fmt.Fprintln(w, "Email is:", cookie.Value)
 }

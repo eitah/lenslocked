@@ -51,7 +51,7 @@ func main() {
 	fourOhFourView = views.NewView("bootstrap", "fourohfour")
 
 	r := mux.NewRouter()
-	// handle lets you just get a view. handlefunc does your post.
+	// Handle lets you just get a view
 	r.Handle("/", staticC.Home).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
 	r.Handle("/faq", staticC.Faq).Methods("GET")
@@ -60,8 +60,10 @@ func main() {
 	r.Handle("/login", usersC.LoginView).Methods("GET")
 	r.Handle("/galleries/new", galleriesC.NewView).Methods("GET")
 
+	// Handlefunc calls a method on the controller
 	r.HandleFunc("/signup", usersC.Create).Methods("POST")
 	r.HandleFunc("/login", usersC.Login).Methods("POST")
+	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
 
 	r.NotFoundHandler = http.HandlerFunc(fourOhFour)
 	fmt.Println("Server starting on :3000...")
