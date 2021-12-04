@@ -172,3 +172,9 @@ func searchForMultipleUsers(db *gorm.DB) {
 	fmt.Printf("Retrieved %d users.", len(users))
 	fmt.Println(users)
 }
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
