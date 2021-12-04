@@ -31,11 +31,25 @@ func main() {
 		panic(err)
 	}
 
-	user, err := us.ByID(1)
+	user, err := us.ByEmail("fred@gmail.com")
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(user)
+	user.Name = "Joe"
+	if err := us.Update(user); err != nil {
+		panic(err)
+	}
+
+	_, err = us.ByEmail("fred@gmail.com")
+	if err != nil {
+		panic(err)
+	}
+
+	if err := us.Delete(user.ID); err != nil {
+		panic(err)
+	}
+	_, err = us.ByEmail("fred@gmail.com")
+	fmt.Printf("as expected error is %s\n", err)
 
 }
