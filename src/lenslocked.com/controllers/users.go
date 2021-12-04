@@ -28,6 +28,7 @@ func (u *Users) New(w http.ResponseWriter, r *http.Request) {
 
 type SignupForm struct {
 	Email    string `schema:"email"`
+	Name     string `schema:"name"`
 	Password string `schema:"password"`
 }
 
@@ -38,5 +39,6 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	fmt.Fprintln(w, "Email is", form.Email)
+	fmt.Fprintln(w, "Name is", form.Name)
 	fmt.Fprintln(w, "Password is", form.Password)
 }
