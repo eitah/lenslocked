@@ -11,6 +11,7 @@ type User struct {
 	Name string
 	// these annotations put constraints on the db
 	Email string `gorm:"not null;unique_index"`
+	Age   uint
 	// todo make password here, first draft will not have it
 }
 
@@ -62,6 +63,25 @@ func (us *UserService) ByEmail(email string) (*User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (us *UserService) ByAge(age uint) (*User, error) {
+	var user User
+	db := us.db.Where("age = ?", age)
+	err := first(db, &user)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// InAgeRange finds users within an age range exclusive
+func (us *UserService) InAgeRange(min uint, max uint) ([]*User, error) {
+	var users []*User
+	if err := us.db.Find(&users, "age > ? AND age < ? ", min, max).Error; err != nil {
+		panic(err)
+	}
+	return users, nil
 }
 
 // first handles boilerplate that would otherwise have to be copied everywhere
