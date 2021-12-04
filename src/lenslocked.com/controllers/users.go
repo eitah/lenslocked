@@ -11,22 +11,15 @@ import (
 func NewUsers(us *models.UserService) *Users {
 	return &Users{
 		NewView:     views.NewView("bootstrap", "users/new"),
+		LoginView:   views.NewView("bootstrap", "users/login"),
 		UserService: us,
 	}
 }
 
 type Users struct {
 	NewView     *views.View
+	LoginView   *views.View
 	UserService *models.UserService
-}
-
-// New is used to render the form where a user can create a new user account
-
-// GET /signup
-func (u *Users) New(w http.ResponseWriter, r *http.Request) {
-	if err := u.NewView.Render(w, nil); err != nil {
-		panic(err)
-	}
 }
 
 type SignupForm struct {
@@ -44,9 +37,10 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := models.User{
-		Name:  form.Name,
-		Email: form.Email,
-		Age:   form.Age,
+		Name:     form.Name,
+		Email:    form.Email,
+		Age:      form.Age,
+		Password: form.Password,
 	}
 
 	if err := u.UserService.Create(&user); err != nil {
@@ -55,4 +49,34 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintln(w, "User is", user)
+}
+
+type LoginForm struct {
+	Email    string `schema:"email"`
+	Password string `schema:"password"`
+}
+
+// POST /login
+func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
+	var form LoginForm
+	if err := ParseForm(r, &form); err != nil {
+		panic(err)
+	}
+
+	user := models.User{
+		Email:    form.Email,
+		Password: form.Password,
+	}
+
+	if err := u.UserService.Authenticate(&user); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	foundUser, err := u.UserService.ByEmail(user.Email)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	fmt.Fprintln(w, "foundUser is", foundUser)
+
 }

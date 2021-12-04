@@ -4,15 +4,27 @@ import (
 	"errors"
 
 	"github.com/jinzhu/gorm"
+	"golang.org/x/crypto/bcrypt"
+)
+
+var (
+	// ErrNotFound is return when a resource cannot be found in the db
+	ErrNotFound = errors.New("models: resource not found")
+	// ErrInvalidID is returned when an invalid id is provided to delete
+	ErrInvalidID = errors.New("models: ID provided was invalid")
+
+	// userPWPepper - the pepper value is a secret random string that we will save to our config eventually
+	userPWPepper = "georgian-kava-licit-unread"
 )
 
 type User struct {
 	gorm.Model
 	Name string
 	// these annotations put constraints on the db
-	Email string `gorm:"not null;unique_index"`
-	Age   uint
-	// todo make password here, first draft will not have it
+	Email        string `gorm:"not null;unique_index"`
+	Age          uint
+	Password     string `gorm:"-"`
+	PasswordHash string `gorm:"not null"`
 }
 
 func NewUserService(connectionInfo string) (*UserService, error) {
@@ -33,13 +45,6 @@ type UserService struct {
 func (us *UserService) Close() error {
 	return us.db.Close()
 }
-
-var (
-	// ErrNotFound is return when a resource cannot be found in the db
-	ErrNotFound = errors.New("models: resource not found")
-	// ErrInvalidID is returned when an invalid id is provided to delete
-	ErrInvalidID = errors.New("models: ID provided was invalid")
-)
 
 // ByID will look up a user with the provided ID.
 // If the user is found we will return a nil error.
@@ -94,7 +99,36 @@ func first(db *gorm.DB, dst interface{}) error {
 }
 
 func (us *UserService) Create(user *User) error {
+	// the pepper is a const that we merge with the password just to up entropy.
+	pepperedPWBytes := []byte(user.Password + userPWPepper)
+	// DefaultCost is a const representing computing power needed for working the hash, recognizing that the higher the cost the more expensive the app.
+	hashedBytes, err := bcrypt.GenerateFromPassword(pepperedPWBytes, bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	// heres a typical hashed password
+	// $2a$10$KdgNj2kbSgl8PuKi0lrmNua.U5Ax5QgjeFzhy96/X4304XzvuC64u
+	// $2a$ - the format of the password hash
+	// $10 - the cost of the hash
+	// the rest - first half is the salt second half is the hashed salted pw
+	user.PasswordHash = string(hashedBytes)
+	// it isnt necessary to wipe out the password but we do it so the plantext password is never logged.
+	user.Password = ""
 	return us.db.Create(user).Error
+}
+
+func (us *UserService) Authenticate(user *User) error {
+	pepperedPWBytes := []byte(user.Password + userPWPepper)
+
+	foundUser, err := us.ByEmail(user.Email)
+	if err != nil {
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(foundUser.PasswordHash), pepperedPWBytes); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (us *UserService) Update(user *User) error {
