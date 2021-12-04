@@ -20,13 +20,14 @@ const (
 	host   = "localhost"
 	port   = 5432
 	user   = "eitah"
-	dbname = "lenslocked_itah"
+	dbname = "lenslocked_itah" // this is not the prod db
 )
 
 type User struct {
 	gorm.Model
-	Name  string
-	Email string `gorm:"not null;unique_index"`
+	Name   string
+	Email  string `gorm:"not null;unique_index"`
+	Orders []Order
 }
 
 type Order struct {
@@ -55,7 +56,8 @@ func main() {
 	db.AutoMigrate(&User{}, &Order{})
 
 	// seedUsers(db)
-	seedOrders(db)
+	// seedOrders(db)
+	// preloadOrders(db)
 
 	// populateSingleRowData(db)
 	// populateOrderData(db)
@@ -73,6 +75,18 @@ func getAUser(db *gorm.DB) {
 		panic(db.Error)
 	}
 	fmt.Println(u)
+}
+
+func preloadOrders(db *gorm.DB) {
+	var user User
+	// Because user has an orders array and because we tell it to be preloaded it all just works.
+	db.Preload("Orders").First(&user)
+	if db.Error != nil {
+		panic(db.Error)
+	}
+	fmt.Println("Email", user.Email)
+	fmt.Println("Number of orders", len(user.Orders))
+	fmt.Println("Orders", user.Orders)
 }
 
 func getAMinUser(db *gorm.DB) {
