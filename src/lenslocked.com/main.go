@@ -5,8 +5,11 @@ import (
 	"net/http"
 
 	"github.com/eitah/lenslocked/src/lenslocked.com/controllers"
+	"github.com/eitah/lenslocked/src/lenslocked.com/models"
 	"github.com/eitah/lenslocked/src/lenslocked.com/views"
 	"github.com/gorilla/mux"
+
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
 var (
@@ -25,9 +28,24 @@ func must(err error) {
 	}
 }
 
+const (
+	host   = "localhost"
+	port   = 5432
+	user   = "eitah"
+	dbname = "lenslocked_dev" // this is the dev db
+)
+
 func main() {
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", host, port, user, dbname)
+	us, err := models.NewUserService(psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+	defer us.Close()
+	us.AutoMigrate()
+
 	staticC := controllers.NewStatic()
-	usersC := controllers.NewUsers()
+	usersC := controllers.NewUsers(us)
 	galleriesC := controllers.NewGalleries()
 
 	fourOhFourView = views.NewView("bootstrap", "fourohfour")

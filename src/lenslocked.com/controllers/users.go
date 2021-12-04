@@ -4,17 +4,20 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/eitah/lenslocked/src/lenslocked.com/models"
 	"github.com/eitah/lenslocked/src/lenslocked.com/views"
 )
 
-func NewUsers() *Users {
+func NewUsers(us *models.UserService) *Users {
 	return &Users{
-		NewView: views.NewView("bootstrap", "users/new"),
+		NewView:     views.NewView("bootstrap", "users/new"),
+		UserService: us,
 	}
 }
 
 type Users struct {
-	NewView *views.View
+	NewView     *views.View
+	UserService *models.UserService
 }
 
 // New is used to render the form where a user can create a new user account
@@ -38,7 +41,16 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	if err := ParseForm(r, &form); err != nil {
 		panic(err)
 	}
-	fmt.Fprintln(w, "Email is", form.Email)
-	fmt.Fprintln(w, "Name is", form.Name)
-	fmt.Fprintln(w, "Password is", form.Password)
+
+	user := models.User{
+		Name:  form.Name,
+		Email: form.Email,
+	}
+
+	if err := u.UserService.Create(&user); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintln(w, "User is", user)
 }
