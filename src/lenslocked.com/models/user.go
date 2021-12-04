@@ -119,14 +119,13 @@ func (us *UserService) Create(user *User) error {
 	return us.db.Create(user).Error
 }
 
-func (us *UserService) Authenticate(user *User) (*User, error) {
-	pepperedPWBytes := []byte(user.Password + userPWPepper)
-
-	foundUser, err := us.ByEmail(user.Email)
+func (us *UserService) Authenticate(email, password string) (*User, error) {
+	foundUser, err := us.ByEmail(email)
 	if err != nil {
 		return nil, err
 	}
 
+	pepperedPWBytes := []byte(password + userPWPepper)
 	if err := bcrypt.CompareHashAndPassword([]byte(foundUser.PasswordHash), pepperedPWBytes); err != nil {
 		if err == bcrypt.ErrMismatchedHashAndPassword {
 			return nil, ErrInvalidPassword
