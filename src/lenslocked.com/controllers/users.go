@@ -68,15 +68,16 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 		Password: form.Password,
 	}
 
-	if err := u.UserService.Authenticate(&user); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	foundUser, err := u.UserService.Authenticate(&user)
+	switch err {
+	case models.ErrNotFound:
+		fmt.Fprintln(w, "Invalid Email Address")
+	case models.ErrInvalidPassword:
+		fmt.Fprintln(w, "Invalid Password")
+	case nil:
+		fmt.Fprintln(w, "foundUser is", foundUser)
+	default:
+		http.Error(w, fmt.Sprintf("unhandled error %s", err.Error()), http.StatusInternalServerError)
 	}
-
-	foundUser, err := u.UserService.ByEmail(user.Email)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	fmt.Fprintln(w, "foundUser is", foundUser)
 
 }

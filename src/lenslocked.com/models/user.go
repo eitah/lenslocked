@@ -12,6 +12,8 @@ var (
 	ErrNotFound = errors.New("models: resource not found")
 	// ErrInvalidID is returned when an invalid id is provided to delete
 	ErrInvalidID = errors.New("models: ID provided was invalid")
+	// ErrInvalidPassword is returned when an invalid password is provided
+	ErrInvalidPassword = errors.New("models: incorrect password provided")
 
 	// userPWPepper - the pepper value is a secret random string that we will save to our config eventually
 	userPWPepper = "georgian-kava-licit-unread"
@@ -117,18 +119,22 @@ func (us *UserService) Create(user *User) error {
 	return us.db.Create(user).Error
 }
 
-func (us *UserService) Authenticate(user *User) error {
+func (us *UserService) Authenticate(user *User) (*User, error) {
 	pepperedPWBytes := []byte(user.Password + userPWPepper)
 
 	foundUser, err := us.ByEmail(user.Email)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(foundUser.PasswordHash), pepperedPWBytes); err != nil {
-		return err
+		if err == bcrypt.ErrMismatchedHashAndPassword {
+			return nil, ErrInvalidPassword
+		} else {
+			return nil, err
+		}
 	}
-	return nil
+	return foundUser, nil
 }
 
 func (us *UserService) Update(user *User) error {
