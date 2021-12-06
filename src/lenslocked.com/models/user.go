@@ -36,34 +36,101 @@ type User struct {
 	RememberHash string `gorm:"not null;unique_index"`
 }
 
-func NewUserService(connectionInfo string) (*UserService, error) {
+type UserService interface {
+	Authenticate(email, password string) (*User, error)
+	UserDB
+}
+
+type userService struct {
+	UserDB
+}
+
+type userValidator struct {
+	UserDB
+}
+
+type UserDB interface {
+	// Methods for querying single users
+	ByID(id uint) (*User, error)
+	ByEmail(email string) (*User, error)
+	ByRemember(token string) (*User, error)
+	ByAge(age uint) (*User, error)
+
+	// Methods for querying multiple users
+	InAgeRange(min uint, max uint) ([]*User, error)
+
+	// Methods for altering users
+	Create(user *User) error
+	Update(user *User) error
+	Delete(id uint) error
+
+	//Close a DB Connection
+	Close() error
+
+	// Migration Helpers
+	AutoMigrate() error
+	DestructiveReset() error
+}
+
+func NewUserService(connectionInfo string) (UserService, error) {
+	ug, err := newUserGorm(connectionInfo)
+	if err != nil {
+		return nil, err
+	}
+	return &userService{
+		UserDB: userValidator{
+			UserDB: ug,
+		},
+	}, nil
+}
+
+func (us *userService) Authenticate(email, password string) (*User, error) {
+	foundUser, err := us.ByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+
+	pepperedPWBytes := []byte(password + userPWPepper)
+	if err := bcrypt.CompareHashAndPassword([]byte(foundUser.PasswordHash), pepperedPWBytes); err != nil {
+		if err == bcrypt.ErrMismatchedHashAndPassword {
+			return nil, ErrInvalidPassword
+		} else {
+			return nil, err
+		}
+	}
+	return foundUser, nil
+}
+
+func newUserGorm(connectionInfo string) (*userGorm, error) {
 	db, err := gorm.Open("postgres", connectionInfo)
 	if err != nil {
 		return nil, err
 	}
 	db.LogMode(true)
-	return &UserService{
+	return &userGorm{
 		db:   db,
 		hmac: hash.NewHMAC(hmacSecretKey),
 	}, nil
 }
 
-type UserService struct {
+// userGorm reperesents our DB interaction layer and implements
+// the userDB interface fully
+type userGorm struct {
 	db   *gorm.DB
 	hmac hash.HMAC
 }
 
-func (us *UserService) Close() error {
-	return us.db.Close()
+func (ug *userGorm) Close() error {
+	return ug.db.Close()
 }
 
 // ByID will look up a user with the provided ID.
 // If the user is found we will return a nil error.
 // If the user is not found we will return ErrNotFound
 // If there is another error we will return it.
-func (us *UserService) ByID(id uint) (*User, error) {
+func (ug *userGorm) ByID(id uint) (*User, error) {
 	var user User
-	db := us.db.Where("id = ?", id)
+	db := ug.db.Where("id = ?", id)
 	err := first(db, &user)
 	if err != nil {
 		return nil, err
@@ -71,9 +138,9 @@ func (us *UserService) ByID(id uint) (*User, error) {
 	return &user, nil
 }
 
-func (us *UserService) ByEmail(email string) (*User, error) {
+func (ug *userGorm) ByEmail(email string) (*User, error) {
 	var user User
-	db := us.db.Where("email = ?", email)
+	db := ug.db.Where("email = ?", email)
 	err := first(db, &user)
 	if err != nil {
 		return nil, err
@@ -81,9 +148,9 @@ func (us *UserService) ByEmail(email string) (*User, error) {
 	return &user, nil
 }
 
-func (us *UserService) ByAge(age uint) (*User, error) {
+func (ug *userGorm) ByAge(age uint) (*User, error) {
 	var user User
-	db := us.db.Where("age = ?", age)
+	db := ug.db.Where("age = ?", age)
 	err := first(db, &user)
 	if err != nil {
 		return nil, err
@@ -92,18 +159,18 @@ func (us *UserService) ByAge(age uint) (*User, error) {
 }
 
 // InAgeRange finds users within an age range exclusive
-func (us *UserService) InAgeRange(min uint, max uint) ([]*User, error) {
+func (ug *userGorm) InAgeRange(min uint, max uint) ([]*User, error) {
 	var users []*User
-	if err := us.db.Find(&users, "age > ? AND age < ? ", min, max).Error; err != nil {
+	if err := ug.db.Find(&users, "age > ? AND age < ? ", min, max).Error; err != nil {
 		panic(err)
 	}
 	return users, nil
 }
 
-func (us *UserService) ByRemember(token string) (*User, error) {
+func (ug *userGorm) ByRemember(token string) (*User, error) {
 	var user User
-	rememberHash := us.hmac.Hash(token)
-	db := us.db.Where("remember_hash = ?", rememberHash)
+	rememberHash := ug.hmac.Hash(token)
+	db := ug.db.Where("remember_hash = ?", rememberHash)
 	err := first(db, &user)
 	if err != nil {
 		return nil, err
@@ -120,7 +187,7 @@ func first(db *gorm.DB, dst interface{}) error {
 	return err
 }
 
-func (us *UserService) Create(user *User) error {
+func (ug *userGorm) Create(user *User) error {
 	// the pepper is a const that we merge with the password just to up entropy.
 	pepperedPWBytes := []byte(user.Password + userPWPepper)
 	// DefaultCost is a const representing computing power needed for working the hash, recognizing that the higher the cost the more expensive the app.
@@ -144,58 +211,41 @@ func (us *UserService) Create(user *User) error {
 		}
 
 		user.Remember = token
-		user.RememberHash = us.hmac.Hash(token)
+		user.RememberHash = ug.hmac.Hash(token)
 	}
 
-	return us.db.Create(user).Error
+	return ug.db.Create(user).Error
 }
 
-func (us *UserService) Authenticate(email, password string) (*User, error) {
-	foundUser, err := us.ByEmail(email)
-	if err != nil {
-		return nil, err
-	}
-
-	pepperedPWBytes := []byte(password + userPWPepper)
-	if err := bcrypt.CompareHashAndPassword([]byte(foundUser.PasswordHash), pepperedPWBytes); err != nil {
-		if err == bcrypt.ErrMismatchedHashAndPassword {
-			return nil, ErrInvalidPassword
-		} else {
-			return nil, err
-		}
-	}
-	return foundUser, nil
-}
-
-func (us *UserService) Update(user *User) error {
+func (ug *userGorm) Update(user *User) error {
 	if user.Remember != "" {
-		user.RememberHash = us.hmac.Hash(user.Remember)
+		user.RememberHash = ug.hmac.Hash(user.Remember)
 	}
-	return us.db.Save(user).Error
+	return ug.db.Save(user).Error
 }
 
-func (us *UserService) Delete(id uint) error {
+func (ug *userGorm) Delete(id uint) error {
 	if id == 0 {
 		return ErrInvalidID
 	}
 	user := User{Model: gorm.Model{ID: id}}
-	return us.db.Delete(user).Error
+	return ug.db.Delete(user).Error
 }
 
 // Nonprod feature
 //   1) calls drop table if exists method
 //   2) rebuild the users table using autoMigrate
-func (us *UserService) DestructiveReset() error {
-	if err := us.db.DropTableIfExists(&User{}).Error; err != nil {
+func (ug *userGorm) DestructiveReset() error {
+	if err := ug.db.DropTableIfExists(&User{}).Error; err != nil {
 		return err
 	}
-	return us.AutoMigrate()
+	return ug.AutoMigrate()
 }
 
 // Automigrate will attempt to auto migrate the users table - its a prod
 // safe version of destructivereset
-func (us UserService) AutoMigrate() error {
-	if err := us.db.AutoMigrate(&User{}).Error; err != nil {
+func (ug *userGorm) AutoMigrate() error {
+	if err := ug.db.AutoMigrate(&User{}).Error; err != nil {
 		return err
 	}
 	return nil
