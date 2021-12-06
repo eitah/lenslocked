@@ -101,8 +101,9 @@ func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
 		}
 
 		cookie := http.Cookie{
-			Name:  "remember_token",
-			Value: user.Remember,
+			Name:     "remember_token",
+			Value:    user.Remember,
+			HttpOnly: true, // tells the cookie that it is not available to scripts.
 		}
 		http.SetCookie(w, &cookie)
 		return nil
@@ -121,7 +122,8 @@ func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
 func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("remember_token")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintln(w, "<header><meta http-equiv=\"refresh\" content=\"2;url=/login\" /></header><body>Please log in, redirecting to '/login' in 2... 1...</body>")
 		return
 	}
 	fmt.Fprintln(w, "remember me token is:", cookie.Value)
