@@ -3,9 +3,13 @@ package models
 import (
 	"errors"
 
+	"github.com/eitah/lenslocked/src/lenslocked.com/hash"
+	"github.com/eitah/lenslocked/src/lenslocked.com/rand"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"
 )
+
+const hmacSecretKey = "secret-hmac-key"
 
 var (
 	// ErrNotFound is return when a resource cannot be found in the db
@@ -19,14 +23,17 @@ var (
 	userPWPepper = "georgian-kava-licit-unread"
 )
 
+// User represents a db user.
+// gorm annotations put constraints on the db
 type User struct {
 	gorm.Model
-	Name string
-	// these annotations put constraints on the db
+	Name         string
 	Email        string `gorm:"not null;unique_index"`
 	Age          uint
 	Password     string `gorm:"-"`
 	PasswordHash string `gorm:"not null"`
+	Remember     string `gorm:"-"`
+	RememberHash string `gorm:"not null;unique_index"`
 }
 
 func NewUserService(connectionInfo string) (*UserService, error) {
@@ -36,12 +43,14 @@ func NewUserService(connectionInfo string) (*UserService, error) {
 	}
 	db.LogMode(true)
 	return &UserService{
-		db: db,
+		db:   db,
+		hmac: hash.NewHMAC(hmacSecretKey),
 	}, nil
 }
 
 type UserService struct {
-	db *gorm.DB
+	db   *gorm.DB
+	hmac hash.HMAC
 }
 
 func (us *UserService) Close() error {
@@ -91,6 +100,17 @@ func (us *UserService) InAgeRange(min uint, max uint) ([]*User, error) {
 	return users, nil
 }
 
+func (us *UserService) ByRemember(token string) (*User, error) {
+	var user User
+	rememberHash := us.hmac.Hash(token)
+	db := us.db.Where("remember_hash = ?", rememberHash)
+	err := first(db, &user)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 // first handles boilerplate that would otherwise have to be copied everywhere
 func first(db *gorm.DB, dst interface{}) error {
 	err := db.First(dst).Error
@@ -116,6 +136,17 @@ func (us *UserService) Create(user *User) error {
 	user.PasswordHash = string(hashedBytes)
 	// it isnt necessary to wipe out the password but we do it so the plantext password is never logged.
 	user.Password = ""
+
+	if user.Remember == "" {
+		token, err := rand.RememberToken()
+		if err != nil {
+			return err
+		}
+
+		user.Remember = token
+		user.RememberHash = us.hmac.Hash(token)
+	}
+
 	return us.db.Create(user).Error
 }
 
@@ -137,6 +168,9 @@ func (us *UserService) Authenticate(email, password string) (*User, error) {
 }
 
 func (us *UserService) Update(user *User) error {
+	if user.Remember != "" {
+		user.RememberHash = us.hmac.Hash(user.Remember)
+	}
 	return us.db.Save(user).Error
 }
 

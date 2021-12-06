@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/eitah/lenslocked/src/lenslocked.com/models"
+	"github.com/eitah/lenslocked/src/lenslocked.com/rand"
 	"github.com/eitah/lenslocked/src/lenslocked.com/views"
 )
 
@@ -48,6 +49,12 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := u.signIn(w, &user); err != nil {
+		// temporary output
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/cookietest", http.StatusNotFound)
 	fmt.Fprintln(w, "User is", user)
 }
 
@@ -76,13 +83,31 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie := http.Cookie{
-		Name:  "email",
-		Value: user.Email,
+	if err := u.signIn(w, user); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	http.SetCookie(w, &cookie)
+	http.Redirect(w, r, "/cookietest", http.StatusFound)
+}
 
-	fmt.Fprintln(w, user)
+func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
+	if user.Remember == "" {
+		token, err := rand.RememberToken()
+		if err != nil {
+			return err
+		}
+		user.Remember = token
+		if err := u.UserService.Update(user); err != nil {
+			return err
+		}
+
+		cookie := http.Cookie{
+			Name:  "remember_token",
+			Value: user.Remember,
+		}
+		http.SetCookie(w, &cookie)
+		return nil
+	}
+	return nil
 }
 
 // Five main attack vectors for cookies in jons course
@@ -94,9 +119,10 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 
 // CookieTest is a dev method to see what our cookies like without needing to muck around in devtools
 func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("email")
+	cookie, err := r.Cookie("remember_token")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	fmt.Fprintln(w, "Email is:", cookie.Value)
+	fmt.Fprintln(w, "remember me token is:", cookie.Value)
 }

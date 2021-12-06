@@ -3,10 +3,47 @@ package main
 import (
 	"fmt"
 
-	"github.com/eitah/lenslocked/src/lenslocked.com/rand"
+	"github.com/eitah/lenslocked/src/lenslocked.com/models"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
+)
+
+const (
+	host   = "localhost"
+	port   = 5432
+	user   = "eitah"
+	dbname = "lenslocked_dev" // this is the dev db
+
 )
 
 func main() {
-	fmt.Println(rand.String(10))
-	fmt.Println(rand.RememberToken())
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", host, port, user, dbname)
+	us, err := models.NewUserService(psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+	defer us.Close()
+	us.DestructiveReset()
+
+	user := models.User{
+		Name:     "Michael Scott",
+		Email:    "michael@dundermifflin.com",
+		Password: "bestboss",
+		Age:      39,
+	}
+
+	if err := us.Create(&user); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%+v\n", user)
+	if user.Remember == "" {
+		panic("Invalid remember token")
+	}
+
+	// Now verify the user can be retrieved from that token
+	user2, err := us.ByRemember(user.Remember)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%+v\n", user2)
 }
