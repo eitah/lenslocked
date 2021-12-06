@@ -47,6 +47,13 @@ type userService struct {
 
 type userValidator struct {
 	UserDB
+	hmac hash.HMAC
+}
+
+// userGorm reperesents our DB interaction layer and implements
+// the userDB interface fully
+type userGorm struct {
+	db *gorm.DB
 }
 
 type UserDB interface {
@@ -77,10 +84,13 @@ func NewUserService(connectionInfo string) (UserService, error) {
 	if err != nil {
 		return nil, err
 	}
+	hmac := hash.NewHMAC(hmacSecretKey)
+	uv := &userValidator{
+		hmac:   hmac,
+		UserDB: ug,
+	}
 	return &userService{
-		UserDB: userValidator{
-			UserDB: ug,
-		},
+		UserDB: uv,
 	}, nil
 }
 
@@ -98,6 +108,7 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 			return nil, err
 		}
 	}
+
 	return foundUser, nil
 }
 
@@ -108,16 +119,8 @@ func newUserGorm(connectionInfo string) (*userGorm, error) {
 	}
 	db.LogMode(true)
 	return &userGorm{
-		db:   db,
-		hmac: hash.NewHMAC(hmacSecretKey),
+		db: db,
 	}, nil
-}
-
-// userGorm reperesents our DB interaction layer and implements
-// the userDB interface fully
-type userGorm struct {
-	db   *gorm.DB
-	hmac hash.HMAC
 }
 
 func (ug *userGorm) Close() error {
@@ -167,12 +170,17 @@ func (ug *userGorm) InAgeRange(min uint, max uint) ([]*User, error) {
 	return users, nil
 }
 
+func (uv *userValidator) ByRemember(token string) (*User, error) {
+	rememberHash := uv.hmac.Hash(token)
+	return uv.UserDB.ByRemember(rememberHash)
+}
+
+// ByRemember looks up a user with the given remember token and returns that user
+// expects user token to already be hashed
 func (ug *userGorm) ByRemember(token string) (*User, error) {
 	var user User
-	rememberHash := ug.hmac.Hash(token)
-	db := ug.db.Where("remember_hash = ?", rememberHash)
-	err := first(db, &user)
-	if err != nil {
+	db := ug.db.Where("remember_hash = ?", token)
+	if err := first(db, &user); err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -187,7 +195,8 @@ func first(db *gorm.DB, dst interface{}) error {
 	return err
 }
 
-func (ug *userGorm) Create(user *User) error {
+// Create creates the provided user and backfills data like the id and cretaedat fields
+func (uv *userValidator) Create(user *User) error {
 	// the pepper is a const that we merge with the password just to up entropy.
 	pepperedPWBytes := []byte(user.Password + userPWPepper)
 	// DefaultCost is a const representing computing power needed for working the hash, recognizing that the higher the cost the more expensive the app.
@@ -211,23 +220,34 @@ func (ug *userGorm) Create(user *User) error {
 		}
 
 		user.Remember = token
-		user.RememberHash = ug.hmac.Hash(token)
+		user.RememberHash = uv.hmac.Hash(token)
 	}
+	return uv.UserDB.Create(user)
+}
 
+func (ug *userGorm) Create(user *User) error {
 	return ug.db.Create(user).Error
 }
 
-func (ug *userGorm) Update(user *User) error {
+func (uv *userValidator) Update(user *User) error {
 	if user.Remember != "" {
-		user.RememberHash = ug.hmac.Hash(user.Remember)
+		user.RememberHash = uv.hmac.Hash(user.Remember)
 	}
+	return uv.UserDB.Update(user)
+}
+
+func (ug *userGorm) Update(user *User) error {
 	return ug.db.Save(user).Error
 }
 
-func (ug *userGorm) Delete(id uint) error {
+func (uv *userValidator) Delete(id uint) error {
 	if id == 0 {
 		return ErrInvalidID
 	}
+	return uv.UserDB.Delete(id)
+}
+
+func (ug *userGorm) Delete(id uint) error {
 	user := User{Model: gorm.Model{ID: id}}
 	return ug.db.Delete(user).Error
 }

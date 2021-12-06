@@ -85,7 +85,9 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err := u.signIn(w, user); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+
 	http.Redirect(w, r, "/cookietest", http.StatusFound)
 }
 
