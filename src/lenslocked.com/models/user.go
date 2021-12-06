@@ -195,8 +195,11 @@ func first(db *gorm.DB, dst interface{}) error {
 	return err
 }
 
-// Create creates the provided user and backfills data like the id and cretaedat fields
-func (uv *userValidator) Create(user *User) error {
+func (uv *userValidator) bcryptPassword(user *User) error {
+	if user.Password == "" {
+		// if pw is unchanged no need to re-hash the password
+		return nil
+	}
 	// the pepper is a const that we merge with the password just to up entropy.
 	pepperedPWBytes := []byte(user.Password + userPWPepper)
 	// DefaultCost is a const representing computing power needed for working the hash, recognizing that the higher the cost the more expensive the app.
@@ -212,6 +215,14 @@ func (uv *userValidator) Create(user *User) error {
 	user.PasswordHash = string(hashedBytes)
 	// it isnt necessary to wipe out the password but we do it so the plantext password is never logged.
 	user.Password = ""
+	return nil
+}
+
+// Create creates the provided user and backfills data like the id and cretaedat fields
+func (uv *userValidator) Create(user *User) error {
+	if err := runUserValFns(user, uv.bcryptPassword); err != nil {
+		return err
+	}
 
 	if user.Remember == "" {
 		token, err := rand.RememberToken()
@@ -230,6 +241,10 @@ func (ug *userGorm) Create(user *User) error {
 }
 
 func (uv *userValidator) Update(user *User) error {
+	if err := runUserValFns(user, uv.bcryptPassword); err != nil {
+		return err
+	}
+
 	if user.Remember != "" {
 		user.RememberHash = uv.hmac.Hash(user.Remember)
 	}
@@ -250,6 +265,17 @@ func (uv *userValidator) Delete(id uint) error {
 func (ug *userGorm) Delete(id uint) error {
 	user := User{Model: gorm.Model{ID: id}}
 	return ug.db.Delete(user).Error
+}
+
+type userValFn func(*User) error
+
+func runUserValFns(user *User, fns ...userValFn) error {
+	for _, fn := range fns {
+		if err := fn(user); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Nonprod feature
