@@ -2,6 +2,8 @@ package models
 
 import (
 	"errors"
+	"regexp"
+	"strings"
 
 	"github.com/eitah/lenslocked/src/lenslocked.com/hash"
 	"github.com/eitah/lenslocked/src/lenslocked.com/rand"
@@ -18,7 +20,10 @@ var (
 	ErrInvalidID = errors.New("models: ID provided was invalid")
 	// ErrInvalidPassword is returned when an invalid password is provided
 	ErrInvalidPassword = errors.New("models: incorrect password provided")
-
+	// ErrEmailRequired is returned when an email isn't provided
+	ErrEmailRequired = errors.New("models: email not provided")
+	// ErrEmailInvalid is returned when our email does not get regexed
+	ErrEmailInvalid = errors.New("models: email invalid according to regex")
 	// userPWPepper - the pepper value is a secret random string that we will save to our config eventually
 	userPWPepper = "georgian-kava-licit-unread"
 )
@@ -47,7 +52,8 @@ type userService struct {
 
 type userValidator struct {
 	UserDB
-	hmac hash.HMAC
+	hmac       hash.HMAC
+	emailRegex *regexp.Regexp
 }
 
 // userGorm reperesents our DB interaction layer and implements
@@ -85,13 +91,18 @@ func NewUserService(connectionInfo string) (UserService, error) {
 		return nil, err
 	}
 	hmac := hash.NewHMAC(hmacSecretKey)
-	uv := &userValidator{
-		hmac:   hmac,
-		UserDB: ug,
-	}
+	uv := NewUserValidator(ug, hmac)
 	return &userService{
 		UserDB: uv,
 	}, nil
+}
+
+func NewUserValidator(udb UserDB, hmac hash.HMAC) *userValidator {
+	return &userValidator{
+		UserDB:     udb,
+		hmac:       hmac,
+		emailRegex: regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
+	}
 }
 
 func (us *userService) Authenticate(email, password string) (*User, error) {
@@ -110,6 +121,29 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 	}
 
 	return foundUser, nil
+}
+
+func (uv *userValidator) normalizeEmail(user *User) error {
+	user.Email = strings.ToLower(user.Email)
+	user.Email = strings.TrimSpace(user.Email)
+	return nil
+}
+
+func (uv *userValidator) requireEmail(user *User) error {
+	if user.Email == "" {
+		return ErrEmailRequired
+	}
+	return nil
+}
+
+func (uv *userValidator) emailFormat(user *User) error {
+	if user.Email == "" {
+		return nil
+	}
+	if !uv.emailRegex.MatchString(user.Email) {
+		return ErrEmailInvalid
+	}
+	return nil
 }
 
 func newUserGorm(connectionInfo string) (*userGorm, error) {
@@ -136,6 +170,16 @@ func (ug *userGorm) ByID(id uint) (*User, error) {
 	db := ug.db.Where("id = ?", id)
 	err := first(db, &user)
 	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (uv *userValidator) ByEmail(email string) (*User, error) {
+	user := User{
+		Email: email,
+	}
+	if err := runUserValFns(&user, uv.normalizeEmail); err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -171,8 +215,22 @@ func (ug *userGorm) InAgeRange(min uint, max uint) ([]*User, error) {
 }
 
 func (uv *userValidator) ByRemember(token string) (*User, error) {
-	rememberHash := uv.hmac.Hash(token)
-	return uv.UserDB.ByRemember(rememberHash)
+	user := User{
+		Remember: token,
+	}
+	if err := runUserValFns(&user, uv.hmacRemember); err != nil {
+		return nil, err
+	}
+
+	return uv.UserDB.ByRemember(user.RememberHash)
+}
+
+func (uv *userValidator) hmacRemember(user *User) error {
+	if user.Remember == "" {
+		return nil
+	}
+	user.RememberHash = uv.hmac.Hash(user.Remember)
+	return nil
 }
 
 // ByRemember looks up a user with the given remember token and returns that user
@@ -218,21 +276,30 @@ func (uv *userValidator) bcryptPassword(user *User) error {
 	return nil
 }
 
+func (uv *userValidator) setRememberIfUnset(user *User) error {
+	if user.Remember != "" {
+		return nil
+	}
+	token, err := rand.RememberToken()
+	if err != nil {
+		return err
+	}
+	user.Remember = token
+	return nil
+}
+
 // Create creates the provided user and backfills data like the id and cretaedat fields
 func (uv *userValidator) Create(user *User) error {
-	if err := runUserValFns(user, uv.bcryptPassword); err != nil {
+	if err := runUserValFns(user,
+		uv.bcryptPassword,
+		uv.setRememberIfUnset,
+		uv.hmacRemember,
+		uv.requireEmail,
+		uv.normalizeEmail,
+		uv.emailFormat); err != nil {
 		return err
 	}
 
-	if user.Remember == "" {
-		token, err := rand.RememberToken()
-		if err != nil {
-			return err
-		}
-
-		user.Remember = token
-		user.RememberHash = uv.hmac.Hash(token)
-	}
 	return uv.UserDB.Create(user)
 }
 
@@ -241,12 +308,13 @@ func (ug *userGorm) Create(user *User) error {
 }
 
 func (uv *userValidator) Update(user *User) error {
-	if err := runUserValFns(user, uv.bcryptPassword); err != nil {
+	if err := runUserValFns(user,
+		uv.bcryptPassword,
+		uv.hmacRemember,
+		uv.requireEmail,
+		uv.normalizeEmail,
+		uv.emailFormat); err != nil {
 		return err
-	}
-
-	if user.Remember != "" {
-		user.RememberHash = uv.hmac.Hash(user.Remember)
 	}
 	return uv.UserDB.Update(user)
 }
@@ -255,9 +323,20 @@ func (ug *userGorm) Update(user *User) error {
 	return ug.db.Save(user).Error
 }
 
+func (uv *userValidator) idGreaterThan(id uint) userValFn {
+	return userValFn(func(user *User) error {
+		if user.ID <= id {
+			return ErrInvalidID
+		}
+		return nil
+	})
+}
+
 func (uv *userValidator) Delete(id uint) error {
-	if id == 0 {
-		return ErrInvalidID
+	var user User
+	user.ID = id
+	if err := runUserValFns(&user, uv.idGreaterThan(0)); err != nil {
+		return err
 	}
 	return uv.UserDB.Delete(id)
 }
