@@ -16,14 +16,17 @@ const hmacSecretKey = "secret-hmac-key"
 var (
 	// ErrNotFound is return when a resource cannot be found in the db
 	ErrNotFound = errors.New("models: resource not found")
-	// ErrInvalidID is returned when an invalid id is provided to delete
-	ErrInvalidID = errors.New("models: ID provided was invalid")
-	// ErrInvalidPassword is returned when an invalid password is provided
-	ErrInvalidPassword = errors.New("models: incorrect password provided")
+	// ErrIDInvalid is returned when an invalid id is provided to delete
+	ErrIDInvalid = errors.New("models: ID provided was invalid")
+	// ErrPasswordIncorrect is returned when an invalid password is provided
+	ErrPasswordIncorrect = errors.New("models: incorrect password provided")
 	// ErrEmailRequired is returned when an email isn't provided
 	ErrEmailRequired = errors.New("models: email not provided")
 	// ErrEmailInvalid is returned when our email does not get regexed
 	ErrEmailInvalid = errors.New("models: email invalid according to regex")
+	// ErrEmailTaken indicates email has already been claimed
+	ErrEmailTaken = errors.New("models: email already in use")
+
 	// userPWPepper - the pepper value is a secret random string that we will save to our config eventually
 	userPWPepper = "georgian-kava-licit-unread"
 )
@@ -42,6 +45,9 @@ type User struct {
 }
 
 type UserService interface {
+	// Authenticate will verify the provided email address and password.
+	// If they are correct the user corresponding to the email will be returned.
+	// Otherwise you get an error if something goes wrong.
 	Authenticate(email, password string) (*User, error)
 	UserDB
 }
@@ -114,7 +120,7 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 	pepperedPWBytes := []byte(password + userPWPepper)
 	if err := bcrypt.CompareHashAndPassword([]byte(foundUser.PasswordHash), pepperedPWBytes); err != nil {
 		if err == bcrypt.ErrMismatchedHashAndPassword {
-			return nil, ErrInvalidPassword
+			return nil, ErrPasswordIncorrect
 		} else {
 			return nil, err
 		}
@@ -288,6 +294,23 @@ func (uv *userValidator) setRememberIfUnset(user *User) error {
 	return nil
 }
 
+func (uv *userValidator) emailIsAvail(user *User) error {
+	existing, err := uv.UserDB.ByEmail(user.Email)
+	if err == ErrNotFound {
+		// email is available if it's not found
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	// if is current user, allow it, else fail validation.
+	if user.ID != existing.ID {
+		return ErrEmailTaken
+	}
+	return nil
+}
+
 // Create creates the provided user and backfills data like the id and cretaedat fields
 func (uv *userValidator) Create(user *User) error {
 	if err := runUserValFns(user,
@@ -296,7 +319,8 @@ func (uv *userValidator) Create(user *User) error {
 		uv.hmacRemember,
 		uv.requireEmail,
 		uv.normalizeEmail,
-		uv.emailFormat); err != nil {
+		uv.emailFormat,
+		uv.emailIsAvail); err != nil {
 		return err
 	}
 
@@ -313,7 +337,8 @@ func (uv *userValidator) Update(user *User) error {
 		uv.hmacRemember,
 		uv.requireEmail,
 		uv.normalizeEmail,
-		uv.emailFormat); err != nil {
+		uv.emailFormat,
+		uv.emailIsAvail); err != nil {
 		return err
 	}
 	return uv.UserDB.Update(user)
@@ -326,7 +351,7 @@ func (ug *userGorm) Update(user *User) error {
 func (uv *userValidator) idGreaterThan(id uint) userValFn {
 	return userValFn(func(user *User) error {
 		if user.ID <= id {
-			return ErrInvalidID
+			return ErrIDInvalid
 		}
 		return nil
 	})
