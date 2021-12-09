@@ -26,6 +26,14 @@ var (
 	ErrEmailInvalid = errors.New("models: email invalid according to regex")
 	// ErrEmailTaken indicates email has already been claimed
 	ErrEmailTaken = errors.New("models: email already in use")
+	// ErrPasswordTooShort indicates an invalid password length.
+	ErrPasswordTooShort = errors.New("models: password must be at least 3 characters long")
+	// ErrPasswordRequired indicates a password was not provided when creating.
+	ErrPasswordRequired = errors.New("models: password is required")
+	// ErrRememberRequired means a remember token is not present for create or update, suggesting a bug.
+	ErrRememberRequired = errors.New("models: remember token is required")
+	// ErrRememberTooShort means our remember token is somehow invalid
+	ErrRememberTooShort = errors.New("models: remmember token too short")
 
 	// userPWPepper - the pepper value is a secret random string that we will save to our config eventually
 	userPWPepper = "georgian-kava-licit-unread"
@@ -311,12 +319,65 @@ func (uv *userValidator) emailIsAvail(user *User) error {
 	return nil
 }
 
+func (uv *userValidator) passwordRequired(user *User) error {
+	if user.Password == "" {
+		return ErrPasswordRequired
+	}
+
+	return nil
+}
+
+func (uv *userValidator) passwordHashRequired(user *User) error {
+	if user.PasswordHash == "" {
+		return ErrPasswordRequired
+	}
+
+	return nil
+}
+
+func (uv *userValidator) passwordMinLength(user *User) error {
+	if user.Password == "" {
+		return nil
+	}
+	if len(user.Password) < 3 {
+		return ErrPasswordTooShort
+	}
+	return nil
+}
+
+func (uv *userValidator) rememberHashRequired(user *User) error {
+	if user.RememberHash == "" {
+		return ErrRememberRequired
+	}
+
+	return nil
+}
+
+func (uv *userValidator) rememberMinBytes(user *User) error {
+	if user.Remember == "" {
+		return nil
+	}
+	bytes, err := rand.NBytes(user.Remember)
+	if err != nil {
+		return err
+	}
+	if bytes < rand.RememberTokenBytes {
+		return ErrRememberTooShort
+	}
+	return nil
+}
+
 // Create creates the provided user and backfills data like the id and cretaedat fields
 func (uv *userValidator) Create(user *User) error {
 	if err := runUserValFns(user,
+		uv.passwordRequired,
+		uv.passwordMinLength,
 		uv.bcryptPassword,
+		uv.passwordHashRequired,
 		uv.setRememberIfUnset,
+		uv.rememberMinBytes,
 		uv.hmacRemember,
+		uv.rememberHashRequired,
 		uv.requireEmail,
 		uv.normalizeEmail,
 		uv.emailFormat,
@@ -333,8 +394,12 @@ func (ug *userGorm) Create(user *User) error {
 
 func (uv *userValidator) Update(user *User) error {
 	if err := runUserValFns(user,
+		uv.passwordMinLength,
 		uv.bcryptPassword,
+		uv.passwordHashRequired,
+		uv.rememberMinBytes,
 		uv.hmacRemember,
+		uv.rememberHashRequired,
 		uv.requireEmail,
 		uv.normalizeEmail,
 		uv.emailFormat,
