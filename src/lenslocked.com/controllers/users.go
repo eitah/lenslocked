@@ -31,6 +31,31 @@ type SignupForm struct {
 }
 
 // POST /signup
+func (u *Users) New(w http.ResponseWriter, r *http.Request) {
+	type Alert struct {
+		Level   string
+		Message string
+	}
+	type Data struct {
+		Alert *Alert
+		Yield interface{}
+	}
+	alert := Alert{
+		Level:   "success",
+		Message: "A good dynamic alert happened",
+	}
+
+	data := Data{
+		Alert: &alert,
+		Yield: "this can be any data because its type is interface{}",
+	}
+
+	if err := u.NewView.Render(w, data); err != nil {
+		panic(err)
+	}
+}
+
+// POST /signup
 func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	var form SignupForm
 	if err := ParseForm(r, &form); err != nil {

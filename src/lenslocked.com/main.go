@@ -56,11 +56,12 @@ func main() {
 	r.Handle("/contact", staticC.Contact).Methods("GET")
 	r.Handle("/faq", staticC.Faq).Methods("GET")
 	r.Handle("/pay-me-money", staticC.PayMeMoney).Methods("GET")
-	r.Handle("/signup", usersC.NewView).Methods("GET")
 	r.Handle("/login", usersC.LoginView).Methods("GET")
 	r.Handle("/galleries/new", galleriesC.NewView).Methods("GET")
 
 	// Handlefunc calls a method on the controller
+	// Normally we only need function calls when pagdes are posts, but here we want business logic for alerts
+	r.HandleFunc("/signup", usersC.New).Methods("GET")
 	r.HandleFunc("/signup", usersC.Create).Methods("POST")
 	r.HandleFunc("/login", usersC.Login).Methods("POST")
 	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
