@@ -67,6 +67,6 @@ func main() {
 	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
 
 	r.NotFoundHandler = http.HandlerFunc(fourOhFour)
-	fmt.Println("Server starting on :3000...")
+	fmt.Println("Starting server on http://localhost:3000")
 	http.ListenAndServe(":3000", r)
 }

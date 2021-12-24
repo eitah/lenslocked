@@ -32,34 +32,17 @@ type SignupForm struct {
 
 // POST /signup
 func (u *Users) New(w http.ResponseWriter, r *http.Request) {
-	type Alert struct {
-		Level   string
-		Message string
-	}
-	type Data struct {
-		Alert *Alert
-		Yield interface{}
-	}
-	alert := Alert{
-		Level:   "success",
-		Message: "A good dynamic alert happened",
-	}
-
-	data := Data{
-		Alert: &alert,
-		Yield: "this can be any data because its type is interface{}",
-	}
-
-	if err := u.NewView.Render(w, data); err != nil {
-		panic(err)
-	}
+	u.NewView.Render(w, nil)
 }
 
 // POST /signup
 func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
+	var vd views.Data
 	var form SignupForm
 	if err := ParseForm(r, &form); err != nil {
-		panic(err)
+		vd.SetAlert(err)
+		u.NewView.Render(w, vd)
+		return
 	}
 
 	user := models.User{
@@ -70,13 +53,14 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := u.UserService.Create(&user); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		vd.SetAlert(err)
+		u.NewView.Render(w, vd)
 		return
 	}
 
 	if err := u.signIn(w, &user); err != nil {
-		// temporary output
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// we assume its soem short lived data outage and so try to let users just proceed.
+		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
 	http.Redirect(w, r, "/cookietest", http.StatusNotFound)
@@ -90,26 +74,29 @@ type LoginForm struct {
 
 // POST /login
 func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
+	var vd views.Data
 	var form LoginForm
 	if err := ParseForm(r, &form); err != nil {
-		panic(err)
+		vd.SetAlert(err)
+		u.LoginView.Render(w, vd)
+		return
 	}
 
 	user, err := u.UserService.Authenticate(form.Email, form.Password)
 	if err != nil {
 		switch err {
 		case models.ErrNotFound:
-			fmt.Fprintln(w, "Invalid Email Address")
-		case models.ErrPasswordIncorrect:
-			fmt.Fprintln(w, "Invalid Password")
+			vd.AlertError("No user exists with that email address")
 		default:
-			http.Error(w, fmt.Sprintf("unhandled error %s", err.Error()), http.StatusInternalServerError)
+			vd.SetAlert(err)
 		}
+		u.LoginView.Render(w, vd)
 		return
 	}
 
 	if err := u.signIn(w, user); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		vd.SetAlert(err)
+		u.LoginView.Render(w, vd)
 		return
 	}
 

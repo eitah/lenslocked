@@ -1,7 +1,6 @@
 package models
 
 import (
-	"errors"
 	"regexp"
 	"strings"
 
@@ -15,29 +14,44 @@ const hmacSecretKey = "secret-hmac-key"
 
 var (
 	// ErrNotFound is return when a resource cannot be found in the db
-	ErrNotFound = errors.New("models: resource not found")
+	ErrNotFound modelError = "models: resource not found"
 	// ErrIDInvalid is returned when an invalid id is provided to delete
-	ErrIDInvalid = errors.New("models: ID provided was invalid")
+	ErrIDInvalid modelError = "models: ID provided was invalid"
 	// ErrPasswordIncorrect is returned when an invalid password is provided
-	ErrPasswordIncorrect = errors.New("models: incorrect password provided")
+	ErrPasswordIncorrect modelError = "models: incorrect password provided"
 	// ErrEmailRequired is returned when an email isn't provided
-	ErrEmailRequired = errors.New("models: email not provided")
+	ErrEmailRequired modelError = "models: email not provided"
 	// ErrEmailInvalid is returned when our email does not get regexed
-	ErrEmailInvalid = errors.New("models: email invalid according to regex")
+	ErrEmailInvalid modelError = "models: email invalid according to regex"
 	// ErrEmailTaken indicates email has already been claimed
-	ErrEmailTaken = errors.New("models: email already in use")
+	ErrEmailTaken modelError = "models: email already in use"
 	// ErrPasswordTooShort indicates an invalid password length.
-	ErrPasswordTooShort = errors.New("models: password must be at least 3 characters long")
+	ErrPasswordTooShort modelError = "models: password must be at least 3 characters long"
 	// ErrPasswordRequired indicates a password was not provided when creating.
-	ErrPasswordRequired = errors.New("models: password is required")
+	ErrPasswordRequired modelError = "models: password is required"
 	// ErrRememberRequired means a remember token is not present for create or update, suggesting a bug.
-	ErrRememberRequired = errors.New("models: remember token is required")
+	ErrRememberRequired modelError = "models: remember token is required"
 	// ErrRememberTooShort means our remember token is somehow invalid
-	ErrRememberTooShort = errors.New("models: remmember token too short")
+	ErrRememberTooShort modelError = "models: remmember token too short"
 
 	// userPWPepper - the pepper value is a secret random string that we will save to our config eventually
 	userPWPepper = "georgian-kava-licit-unread"
 )
+
+type modelError string
+
+func (e modelError) Error() string {
+	return string(e)
+}
+
+func (e modelError) Public() string {
+	sanitizedString := strings.Replace(string(e), "models: ", "", 1)
+	final := strings.Replace(sanitizedString,
+		sanitizedString[0:1],
+		strings.ToUpper(sanitizedString[0:1]),
+		1)
+	return final
+}
 
 // User represents a db user.
 // gorm annotations put constraints on the db
