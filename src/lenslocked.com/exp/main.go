@@ -22,8 +22,8 @@ func main() {
 		panic(err)
 	}
 	us := services.User
-	defer us.Close()
-	us.DestructiveReset()
+	defer services.Close()
+	services.DestructiveReset()
 
 	user := models.User{
 		Name:     "Michael Scott",

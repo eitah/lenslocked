@@ -104,13 +104,6 @@ type UserDB interface {
 	Create(user *User) error
 	Update(user *User) error
 	Delete(id uint) error
-
-	//Close a DB Connection
-	Close() error
-
-	// Migration Helpers
-	AutoMigrate() error
-	DestructiveReset() error
 }
 
 func NewUserService(db *gorm.DB) UserService {
@@ -171,10 +164,6 @@ func (uv *userValidator) emailFormat(user *User) error {
 		return ErrEmailInvalid
 	}
 	return nil
-}
-
-func (ug *userGorm) Close() error {
-	return ug.db.Close()
 }
 
 // ByID will look up a user with the provided ID.
