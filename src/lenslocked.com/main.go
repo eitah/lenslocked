@@ -19,7 +19,7 @@ var (
 func fourOhFour(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	must(fourOhFourView.Render(w, nil))
+	fourOhFourView.Render(w, nil)
 }
 
 func must(err error) {
@@ -37,15 +37,16 @@ const (
 
 func main() {
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", host, port, user, dbname)
-	us, err := models.NewUserService(psqlInfo)
+	services, err := models.NewServices(psqlInfo)
 	if err != nil {
 		panic(err)
 	}
-	defer us.Close()
-	us.AutoMigrate()
+
+	defer services.User.Close()
+	services.User.AutoMigrate()
 
 	staticC := controllers.NewStatic()
-	usersC := controllers.NewUsers(us)
+	usersC := controllers.NewUsers(services.User)
 	galleriesC := controllers.NewGalleries()
 
 	fourOhFourView = views.NewView("bootstrap", "fourohfour")

@@ -113,16 +113,15 @@ type UserDB interface {
 	DestructiveReset() error
 }
 
-func NewUserService(connectionInfo string) (UserService, error) {
-	ug, err := newUserGorm(connectionInfo)
-	if err != nil {
-		return nil, err
+func NewUserService(db *gorm.DB) UserService {
+	ug := &userGorm{
+		db: db,
 	}
 	hmac := hash.NewHMAC(hmacSecretKey)
 	uv := NewUserValidator(ug, hmac)
 	return &userService{
 		UserDB: uv,
-	}, nil
+	}
 }
 
 func NewUserValidator(udb UserDB, hmac hash.HMAC) *userValidator {
@@ -172,17 +171,6 @@ func (uv *userValidator) emailFormat(user *User) error {
 		return ErrEmailInvalid
 	}
 	return nil
-}
-
-func newUserGorm(connectionInfo string) (*userGorm, error) {
-	db, err := gorm.Open("postgres", connectionInfo)
-	if err != nil {
-		return nil, err
-	}
-	db.LogMode(true)
-	return &userGorm{
-		db: db,
-	}, nil
 }
 
 func (ug *userGorm) Close() error {
