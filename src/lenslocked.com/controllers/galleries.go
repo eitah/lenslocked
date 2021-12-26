@@ -3,7 +3,6 @@ package controllers
 import (
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/eitah/lenslocked/src/lenslocked.com/models"
 	"github.com/eitah/lenslocked/src/lenslocked.com/views"
@@ -52,4 +51,5 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 		g.NewView.Render(w, vd)
 		return
 	}
+	fmt.Fprintln(w, "Gallery is", gallery)
 }

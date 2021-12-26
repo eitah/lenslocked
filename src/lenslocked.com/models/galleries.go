@@ -31,18 +31,11 @@ type GalleryDB interface {
 }
 
 func NewGalleryService(db *gorm.DB) GalleryService {
-	gg := &galleryGorm{
-		db: db,
-	}
-	gv := NewGalleryValidator(gg)
 	return &galleryService{
-		GalleryDB: gv,
-	}
-}
-
-func NewGalleryValidator(gdb GalleryDB) *galleryValidator {
-	return &galleryValidator{
-		GalleryDB: gdb,
+		GalleryDB: &galleryValidator{
+			GalleryDB: &galleryGorm{
+				db: db,
+			}},
 	}
 }
 
