@@ -1,6 +1,10 @@
 package models
 
-import "github.com/jinzhu/gorm"
+import (
+	"fmt"
+
+	"github.com/jinzhu/gorm"
+)
 
 func NewServices(connectionInfo string) (*Services, error) {
 	db, err := gorm.Open("postgres", connectionInfo)
@@ -8,8 +12,9 @@ func NewServices(connectionInfo string) (*Services, error) {
 		return nil, err
 	}
 	db.LogMode(true)
+
 	return &Services{
-		Gallery: &galleryGorm{},
+		Gallery: NewGalleryService(db),
 		User:    NewUserService(db),
 		db:      db,
 	}, nil

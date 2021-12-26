@@ -1,4 +1,4 @@
-package main
+package usexp
 
 // package main
 
@@ -20,12 +20,14 @@ const (
 
 func main() {
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", host, port, user, dbname)
-	us, err := models.NewUserService(psqlInfo)
+	services, err := models.NewServices(psqlInfo)
 	if err != nil {
 		panic(err)
 	}
-	defer us.Close()
-	us.DestructiveReset()
+	defer services.Close()
+	services.DestructiveReset()
+
+	us := services.User
 
 	if err := us.Create(&models.User{Name: "fred", Email: "fred@gmail.com", Age: 32}); err != nil {
 		panic(err)

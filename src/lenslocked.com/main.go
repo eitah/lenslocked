@@ -47,7 +47,7 @@ func main() {
 
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers(services.User)
-	galleriesC := controllers.NewGalleries()
+	galleriesC := controllers.NewGalleries(services.Gallery)
 
 	fourOhFourView = views.NewView("bootstrap", "fourohfour")
 
@@ -64,6 +64,7 @@ func main() {
 	// Normally we only need function calls when pagdes are posts, but here we want business logic for alerts
 	r.HandleFunc("/signup", usersC.New).Methods("GET")
 	r.HandleFunc("/signup", usersC.Create).Methods("POST")
+	r.HandleFunc("/galleries/new", galleriesC.Create).Methods("POST")
 	r.HandleFunc("/login", usersC.Login).Methods("POST")
 	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
 

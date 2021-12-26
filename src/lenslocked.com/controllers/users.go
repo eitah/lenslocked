@@ -30,7 +30,7 @@ type SignupForm struct {
 	Age      uint   `schema:"age"`
 }
 
-// POST /signup
+// GET /signup
 func (u *Users) New(w http.ResponseWriter, r *http.Request) {
 	u.NewView.Render(w, nil)
 }
