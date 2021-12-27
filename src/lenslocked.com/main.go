@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/eitah/lenslocked/src/lenslocked.com/controllers"
+	"github.com/eitah/lenslocked/src/lenslocked.com/middleware"
 	"github.com/eitah/lenslocked/src/lenslocked.com/models"
 	"github.com/eitah/lenslocked/src/lenslocked.com/views"
 	"github.com/gorilla/mux"
@@ -48,8 +49,11 @@ func main() {
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers(services.User)
 	galleriesC := controllers.NewGalleries(services.Gallery)
-
 	fourOhFourView = views.NewView("bootstrap", "fourohfour")
+
+	requireUserMW := &middleware.RequireUser{
+		UserService: services.User,
+	}
 
 	r := mux.NewRouter()
 	// Handle lets you just get a view
@@ -58,13 +62,13 @@ func main() {
 	r.Handle("/faq", staticC.Faq).Methods("GET")
 	r.Handle("/pay-me-money", staticC.PayMeMoney).Methods("GET")
 	r.Handle("/login", usersC.LoginView).Methods("GET")
-	r.Handle("/galleries/new", galleriesC.NewView).Methods("GET")
+	r.Handle("/galleries/new", requireUserMW.Apply(galleriesC.NewView)).Methods("GET")
 
 	// Handlefunc calls a method on the controller
 	// Normally we only need function calls when pagdes are posts, but here we want business logic for alerts
 	r.HandleFunc("/signup", usersC.New).Methods("GET")
 	r.HandleFunc("/signup", usersC.Create).Methods("POST")
-	r.HandleFunc("/galleries", galleriesC.Create).Methods("POST")
+	r.HandleFunc("/galleries", requireUserMW.ApplyFn(galleriesC.Create)).Methods("POST")
 	r.HandleFunc("/login", usersC.Login).Methods("POST")
 	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/eitah/lenslocked/src/lenslocked.com/context"
 	"github.com/eitah/lenslocked/src/lenslocked.com/models"
 	"github.com/eitah/lenslocked/src/lenslocked.com/views"
 )
@@ -40,10 +41,11 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// This is what the validator code is for, keeping this from being brittle.
+	user := context.User(r.Context())
 	gallery := models.Gallery{
-		// todo coming back to this
-		// UserID: models.UserDB.ByRemember(r.Get)
-		Title: form.Title,
+		UserID: user.ID,
+		Title:  form.Title,
 	}
 
 	if err := g.GalleryService.Create(&gallery); err != nil {
