@@ -11,6 +11,11 @@ type Gallery struct {
 	// Images []string todo come back to this
 }
 
+var (
+	ErrUserIDRequired modelError = "models: UserID is required on this gallery"
+	ErrTitleRequired  modelError = "models: Title is required on this gallery"
+)
+
 type GalleryService interface {
 	GalleryDB
 }
@@ -44,7 +49,27 @@ type galleryGorm struct {
 }
 
 func (gv *galleryValidator) Create(gallery *Gallery) error {
+	if err := runGalleryValFns(gallery, []galleryValFn{
+		gv.hasValidUserId,
+		gv.hasTitle,
+	}...); err != nil {
+		return err
+	}
 	return gv.GalleryDB.Create(gallery)
+}
+
+func (gv *galleryValidator) hasValidUserId(gallery *Gallery) error {
+	if gallery.UserID == 0 {
+		return ErrUserIDRequired
+	}
+	return nil
+}
+
+func (gv *galleryValidator) hasTitle(gallery *Gallery) error {
+	if gallery.Title == "" {
+		return ErrTitleRequired
+	}
+	return nil
 }
 
 // 1. write working gallery service create
@@ -53,4 +78,15 @@ func (gv *galleryValidator) Create(gallery *Gallery) error {
 // 4. add validations
 func (gg *galleryGorm) Create(gallery *Gallery) error {
 	return gg.db.Create(gallery).Error
+}
+
+type galleryValFn func(*Gallery) error
+
+func runGalleryValFns(gallery *Gallery, fns ...galleryValFn) error {
+	for _, fn := range fns {
+		if err := fn(gallery); err != nil {
+			return err
+		}
+	}
+	return nil
 }

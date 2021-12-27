@@ -21,8 +21,7 @@ type Galleries struct {
 }
 
 type GalleryForm struct {
-	UserID uint   `schema:"userID"`
-	Title  string `schema:"title"`
+	Title string `schema:"title"`
 }
 
 // GET /galleries/new
@@ -42,8 +41,9 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	gallery := models.Gallery{
-		UserID: form.UserID,
-		Title:  form.Title,
+		// todo coming back to this
+		// UserID: models.UserDB.ByRemember(r.Get)
+		Title: form.Title,
 	}
 
 	if err := g.GalleryService.Create(&gallery); err != nil {
