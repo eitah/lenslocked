@@ -184,10 +184,11 @@ func (uv *userValidator) ByEmail(email string) (*User, error) {
 	user := User{
 		Email: email,
 	}
+
 	if err := runUserValFns(&user, uv.normalizeEmail); err != nil {
 		return nil, err
 	}
-	return &user, nil
+	return uv.UserDB.ByEmail(user.Email)
 }
 
 func (ug *userGorm) ByEmail(email string) (*User, error) {
