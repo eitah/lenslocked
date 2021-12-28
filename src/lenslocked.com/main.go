@@ -62,15 +62,17 @@ func main() {
 	r.Handle("/faq", staticC.Faq).Methods("GET")
 	r.Handle("/pay-me-money", staticC.PayMeMoney).Methods("GET")
 	r.Handle("/login", usersC.LoginView).Methods("GET")
-	r.Handle("/galleries/new", requireUserMW.Apply(galleriesC.NewView)).Methods("GET")
 
 	// Handlefunc calls a method on the controller
 	// Normally we only need function calls when pagdes are posts, but here we want business logic for alerts
 	r.HandleFunc("/signup", usersC.New).Methods("GET")
 	r.HandleFunc("/signup", usersC.Create).Methods("POST")
-	r.HandleFunc("/galleries", requireUserMW.ApplyFn(galleriesC.Create)).Methods("POST")
 	r.HandleFunc("/login", usersC.Login).Methods("POST")
 	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
+
+	r.Handle("/galleries/new", requireUserMW.Apply(galleriesC.NewView)).Methods("GET")
+	r.HandleFunc("/galleries", requireUserMW.ApplyFn(galleriesC.Create)).Methods("POST")
+	r.HandleFunc("/galleries/show/{id:[0-9]+}", galleriesC.Show).Methods("GET")
 
 	r.NotFoundHandler = http.HandlerFunc(fourOhFour)
 	fmt.Println("Starting server on http://localhost:3000")

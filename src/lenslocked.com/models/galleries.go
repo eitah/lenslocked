@@ -12,8 +12,9 @@ type Gallery struct {
 }
 
 var (
-	ErrUserIDRequired modelError = "models: UserID is required on this gallery"
-	ErrTitleRequired  modelError = "models: Title is required on this gallery"
+	ErrUserIDRequired    modelError = "models: UserID is required on this gallery"
+	ErrGalleryIdRequired modelError = "models: GalleryID is required"
+	ErrTitleRequired     modelError = "models: Title is required on this gallery"
 )
 
 type GalleryService interface {
@@ -32,6 +33,8 @@ type galleryValidator struct {
 var _ GalleryDB = &galleryGorm{}
 
 type GalleryDB interface {
+	ByID(id uint) (*Gallery, error)
+
 	Create(gallery *Gallery) error
 }
 
@@ -70,6 +73,37 @@ func (gv *galleryValidator) hasTitle(gallery *Gallery) error {
 		return ErrTitleRequired
 	}
 	return nil
+}
+
+func (gv *galleryValidator) hasValidId(gallery *Gallery) error {
+	if gallery.ID == 0 {
+		return ErrGalleryIdRequired
+	}
+	return nil
+}
+
+func (gv *galleryValidator) ByID(id uint) (*Gallery, error) {
+	gallery := Gallery{
+		Model: gorm.Model{
+			ID: id,
+		},
+	}
+
+	if err := runGalleryValFns(&gallery, gv.hasValidId); err != nil {
+		return nil, err
+	}
+
+	return gv.GalleryDB.ByID(id)
+}
+
+func (gg *galleryGorm) ByID(id uint) (*Gallery, error) {
+	var gallery Gallery
+	db := gg.db.Where("id = ?", id)
+	err := first(db, &gallery)
+	if err != nil {
+		return nil, err
+	}
+	return &gallery, nil
 }
 
 // 1. write working gallery service create
