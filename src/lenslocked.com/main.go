@@ -46,16 +46,16 @@ func main() {
 	defer services.Close()
 	services.AutoMigrate()
 
+	r := mux.NewRouter()
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers(services.User)
-	galleriesC := controllers.NewGalleries(services.Gallery)
+	galleriesC := controllers.NewGalleries(services.Gallery, r)
 	fourOhFourView = views.NewView("bootstrap", "fourohfour")
 
 	requireUserMW := &middleware.RequireUser{
 		UserService: services.User,
 	}
 
-	r := mux.NewRouter()
 	// Handle lets you just get a view
 	r.Handle("/", staticC.Home).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
@@ -72,7 +72,7 @@ func main() {
 
 	r.Handle("/galleries/new", requireUserMW.Apply(galleriesC.NewView)).Methods("GET")
 	r.HandleFunc("/galleries", requireUserMW.ApplyFn(galleriesC.Create)).Methods("POST")
-	r.HandleFunc("/galleries/show/{id:[0-9]+}", galleriesC.Show).Methods("GET")
+	r.HandleFunc("/galleries/show/{id:[0-9]+}", galleriesC.Show).Methods("GET").Name(controllers.ShowGallery)
 
 	r.NotFoundHandler = http.HandlerFunc(fourOhFour)
 	fmt.Println("Starting server on http://localhost:3000")

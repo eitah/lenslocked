@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -11,11 +10,16 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func NewGalleries(gs models.GalleryService) *Galleries {
+const (
+	ShowGallery = "show_gallery"
+)
+
+func NewGalleries(gs models.GalleryService, r *mux.Router) *Galleries {
 	return &Galleries{
 		NewView:        views.NewView("bootstrap", "galleries/new"),
 		ShowView:       views.NewView("bootstrap", "galleries/show"),
 		GalleryService: gs,
+		r:              r,
 	}
 }
 
@@ -23,6 +27,7 @@ type Galleries struct {
 	NewView        *views.View
 	ShowView       *views.View
 	GalleryService models.GalleryService
+	r              *mux.Router
 }
 
 type GalleryForm struct {
@@ -83,5 +88,11 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 		g.NewView.Render(w, vd)
 		return
 	}
-	fmt.Fprintln(w, "Gallery is", gallery)
+
+	url, err := g.r.Get(ShowGallery).URL("id", strconv.Itoa(int(gallery.ID)))
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+	}
+
+	http.Redirect(w, r, url.Path, http.StatusFound)
 }
