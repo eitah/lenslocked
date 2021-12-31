@@ -7,13 +7,15 @@ import (
 	"github.com/eitah/lenslocked/src/lenslocked.com/models"
 	"github.com/eitah/lenslocked/src/lenslocked.com/rand"
 	"github.com/eitah/lenslocked/src/lenslocked.com/views"
+	"github.com/gorilla/mux"
 )
 
-func NewUsers(us models.UserService) *Users {
+func NewUsers(us models.UserService, r *mux.Router) *Users {
 	return &Users{
 		NewView:     views.NewView("bootstrap", "users/new"),
 		LoginView:   views.NewView("bootstrap", "users/login"),
 		UserService: us,
+		r:           r,
 	}
 }
 
@@ -21,6 +23,7 @@ type Users struct {
 	NewView     *views.View
 	LoginView   *views.View
 	UserService models.UserService
+	r           *mux.Router
 }
 
 type SignupForm struct {
@@ -63,8 +66,13 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
-	http.Redirect(w, r, "/cookietest", http.StatusNotFound)
-	fmt.Fprintln(w, "User is", user)
+
+	url, err := u.r.Get(IndexGalleries).URL()
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, url.Path, http.StatusFound)
 }
 
 type LoginForm struct {
@@ -100,7 +108,12 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/cookietest", http.StatusFound)
+	url, err := u.r.Get(IndexGalleries).URL()
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, url.Path, http.StatusFound)
 }
 
 func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
