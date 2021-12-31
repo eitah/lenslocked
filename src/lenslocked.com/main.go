@@ -73,6 +73,10 @@ func main() {
 	r.Handle("/galleries/new", requireUserMW.Apply(galleriesC.NewView)).Methods("GET")
 	r.HandleFunc("/galleries", requireUserMW.ApplyFn(galleriesC.Create)).Methods("POST")
 	r.HandleFunc("/galleries/show/{id:[0-9]+}", galleriesC.Show).Methods("GET").Name(controllers.ShowGallery)
+	// inconsistent verb bc of galleries index page
+	r.HandleFunc("/galleries/{id:[0-9]+}/edit", requireUserMW.ApplyFn(galleriesC.Edit)).Methods("GET")
+	r.HandleFunc("/galleries/{id:[0-9]+}/update", requireUserMW.ApplyFn(galleriesC.Update)).Methods("POST")
+	r.HandleFunc("/galleries/{id:[0-9]+}/delete", requireUserMW.ApplyFn(galleriesC.Delete)).Methods("POST")
 
 	r.NotFoundHandler = http.HandlerFunc(fourOhFour)
 	fmt.Println("Starting server on http://localhost:3000")

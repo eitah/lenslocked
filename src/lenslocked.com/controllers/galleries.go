@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -18,6 +19,7 @@ func NewGalleries(gs models.GalleryService, r *mux.Router) *Galleries {
 	return &Galleries{
 		NewView:        views.NewView("bootstrap", "galleries/new"),
 		ShowView:       views.NewView("bootstrap", "galleries/show"),
+		EditView:       views.NewView("bootstrap", "galleries/edit"),
 		GalleryService: gs,
 		r:              r,
 	}
@@ -26,6 +28,7 @@ func NewGalleries(gs models.GalleryService, r *mux.Router) *Galleries {
 type Galleries struct {
 	NewView        *views.View
 	ShowView       *views.View
+	EditView       *views.View
 	GalleryService models.GalleryService
 	r              *mux.Router
 }
@@ -41,22 +44,9 @@ func (g *Galleries) New(w http.ResponseWriter, r *http.Request) {
 
 // GET /galleries/show/:id
 func (g *Galleries) Show(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id, err := strconv.ParseUint(vars["id"], 10, 32)
+	gallery, err := g.galleryByID(w, r)
 	if err != nil {
-		http.Error(w, "Invalid gallery ID", http.StatusNotFound)
-		return
-	}
-
-	gallery, err := g.GalleryService.ByID(uint(id))
-	if err != nil {
-		switch err {
-		case models.ErrNotFound:
-			http.Error(w, "Gallery not found", http.StatusNotFound)
-		default:
-			http.Error(w, "Whoops!Something went wrong.",
-				http.StatusInternalServerError)
-		}
+		// galleryByID handles the error so we just need to return here
 		return
 	}
 
@@ -95,4 +85,107 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, url.Path, http.StatusFound)
+}
+
+// GET /galleries/:id/edit
+func (g *Galleries) Edit(w http.ResponseWriter, r *http.Request) {
+	gallery, err := g.galleryByID(w, r)
+	if err != nil {
+		return
+	}
+
+	user := context.User(r.Context())
+	if gallery.UserID != user.ID {
+		http.Error(w, "You do not have permission to edit this gallery", http.StatusForbidden)
+		return
+	}
+
+	var vd views.Data
+	vd.Yield = gallery
+	g.EditView.Render(w, vd)
+
+}
+
+// POST /galleries/:id/update
+func (g *Galleries) Update(w http.ResponseWriter, r *http.Request) {
+	gallery, err := g.galleryByID(w, r)
+	if err != nil {
+		return
+	}
+
+	user := context.User(r.Context())
+	if gallery.UserID != user.ID {
+		// why he uses 404 her and 403 above not sure but w/e
+		http.Error(w, "Gallery not found", http.StatusNotFound)
+		return
+	}
+
+	var vd views.Data
+	vd.Yield = gallery
+	var form GalleryForm
+	if err := ParseForm(r, &form); err != nil {
+		vd.SetAlert(err)
+		g.EditView.Render(w, vd)
+	}
+
+	gallery.Title = form.Title
+
+	if err = g.GalleryService.Update(gallery); err != nil {
+		vd.SetAlert(err)
+	} else {
+		vd.Alert = &views.Alert{
+			Level:   views.AlertLvlSuccess,
+			Message: "Gallery Updated Suceessfully!",
+		}
+	}
+
+	g.EditView.Render(w, vd)
+}
+
+// POST /galleries/:id/delete
+func (g *Galleries) Delete(w http.ResponseWriter, r *http.Request) {
+	gallery, err := g.galleryByID(w, r)
+	if err != nil {
+		return
+	}
+
+	user := context.User(r.Context())
+	if gallery.UserID != user.ID {
+		http.Error(w, "You do not have permission to edit this gallery", http.StatusForbidden)
+		return
+	}
+
+	var vd views.Data
+	if err := g.GalleryService.Delete(gallery.ID); err != nil {
+		vd.SetAlert(err)
+		vd.Yield = gallery
+		g.EditView.Render(w, vd)
+		return
+	}
+
+	// todo redirect to the index page
+	fmt.Fprintln(w, "successful deletion!")
+}
+
+func (g Galleries) galleryByID(w http.ResponseWriter, r *http.Request) (*models.Gallery, error) {
+	vars := mux.Vars(r)
+	id, err := strconv.ParseUint(vars["id"], 10, 32)
+	if err != nil {
+		http.Error(w, "Invalid gallery ID", http.StatusNotFound)
+		return nil, err
+	}
+
+	gallery, err := g.GalleryService.ByID(uint(id))
+	if err != nil {
+		switch err {
+		case models.ErrNotFound:
+			http.Error(w, "Gallery not found", http.StatusNotFound)
+		default:
+			http.Error(w, "Whoops! Something went wrong.",
+				http.StatusInternalServerError)
+		}
+		return nil, err
+	}
+
+	return gallery, nil
 }

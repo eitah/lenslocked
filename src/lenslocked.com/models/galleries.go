@@ -34,8 +34,9 @@ var _ GalleryDB = &galleryGorm{}
 
 type GalleryDB interface {
 	ByID(id uint) (*Gallery, error)
-
 	Create(gallery *Gallery) error
+	Update(gallery *Gallery) error
+	Delete(id uint) error
 }
 
 func NewGalleryService(db *gorm.DB) GalleryService {
@@ -49,16 +50,6 @@ func NewGalleryService(db *gorm.DB) GalleryService {
 
 type galleryGorm struct {
 	db *gorm.DB
-}
-
-func (gv *galleryValidator) Create(gallery *Gallery) error {
-	if err := runGalleryValFns(gallery, []galleryValFn{
-		gv.hasValidUserId,
-		gv.hasTitle,
-	}...); err != nil {
-		return err
-	}
-	return gv.GalleryDB.Create(gallery)
 }
 
 func (gv *galleryValidator) hasValidUserId(gallery *Gallery) error {
@@ -106,12 +97,52 @@ func (gg *galleryGorm) ByID(id uint) (*Gallery, error) {
 	return &gallery, nil
 }
 
+func (gv *galleryValidator) Create(gallery *Gallery) error {
+	if err := runGalleryValFns(gallery, []galleryValFn{
+		gv.hasValidUserId,
+		gv.hasTitle,
+	}...); err != nil {
+		return err
+	}
+	return gv.GalleryDB.Create(gallery)
+}
+
 // 1. write working gallery service create
 // 2. controller and view to render the form
 // 3. parse the gallery form and create a gallery
 // 4. add validations
 func (gg *galleryGorm) Create(gallery *Gallery) error {
 	return gg.db.Create(gallery).Error
+}
+
+func (gv *galleryValidator) Update(gallery *Gallery) error {
+	if err := runGalleryValFns(gallery,
+		gv.hasValidUserId,
+		gv.hasTitle,
+		gv.hasValidId); err != nil {
+		return err
+	}
+
+	return gv.GalleryDB.Update(gallery)
+}
+
+func (gg *galleryGorm) Update(gallery *Gallery) error {
+	return gg.db.Save(gallery).Error
+}
+
+func (gv *galleryValidator) Delete(id uint) error {
+	gallery := Gallery{Model: gorm.Model{ID: id}}
+
+	if err := runGalleryValFns(&gallery, gv.hasValidId); err != nil {
+		return err
+	}
+
+	return gv.GalleryDB.Delete(id)
+}
+
+func (gg *galleryGorm) Delete(id uint) error {
+	gallery := Gallery{Model: gorm.Model{ID: id}}
+	return gg.db.Delete(&gallery).Error
 }
 
 type galleryValFn func(*Gallery) error
