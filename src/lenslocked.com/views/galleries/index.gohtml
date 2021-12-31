@@ -1,0 +1,30 @@
+{{define "yield"}}
+<div class="row">
+<div class="col-md-6 col-md-offset-3">
+<div class="panel panel-primary">
+<div class="panel-heading">
+<h3 class="panel-title">See your galleries</h3>
+</div>
+<div class="panel-body">
+{{template "index" .}}
+</div>
+</div>
+</div>
+{{end}}
+
+{{define "index"}}
+
+{{range .}}
+<div>
+{{.Title}}
+</div>
+{{end}}
+
+{{ $length := len . }}
+{{ if eq $length 0 }}
+  <div>
+  You have no galleries better start making them.
+  </div>
+{{end}}
+
+{{end}}

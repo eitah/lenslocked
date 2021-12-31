@@ -78,6 +78,8 @@ func main() {
 	r.HandleFunc("/galleries/{id:[0-9]+}/update", requireUserMW.ApplyFn(galleriesC.Update)).Methods("POST")
 	r.HandleFunc("/galleries/{id:[0-9]+}/delete", requireUserMW.ApplyFn(galleriesC.Delete)).Methods("POST")
 
+	r.HandleFunc("/galleries", requireUserMW.ApplyFn(galleriesC.Index)).Methods("GET")
+
 	r.NotFoundHandler = http.HandlerFunc(fourOhFour)
 	fmt.Println("Starting server on http://localhost:3000")
 	http.ListenAndServe(":3000", r)
