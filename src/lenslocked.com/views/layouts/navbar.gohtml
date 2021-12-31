@@ -17,12 +17,18 @@ aria-expanded="false" aria-controls="navbar">
 <li><a href="/">Home</a></li>
 <li><a href="/contact">Contact</a></li>
 <li><a href="/faq">FAQ</a></li>
-<li><a href="/galleries/new">New Galleries</a></li>
+<li><a href="/galleries/new">New Gallery</a></li>
+{{if .User}}
+<li><a href="/galleries">My Galleries</a></li>
+{{end}}
 </ul>
 <ul class="nav navbar-nav navbar-right">
+{{if .User}}
+<li><a>Hi, {{.User.Name}}</a></li>
+{{else}}
 <li><a href="/signup">Sign Up</a></li>
 <li><a href="/login">Login</a></li>
-
+{{end}}
 </ul>
 </div>
 </div></nav>

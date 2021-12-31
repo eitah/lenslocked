@@ -1,6 +1,10 @@
 package views
 
-import "log"
+import (
+	"log"
+
+	"github.com/eitah/lenslocked/src/lenslocked.com/models"
+)
 
 const (
 	AlertLvlError   = "danger"
@@ -16,6 +20,7 @@ const (
 type Data struct {
 	Alert *Alert
 	Yield interface{}
+	User  *models.User
 }
 
 // Alert is the Boostrap Alert message template.

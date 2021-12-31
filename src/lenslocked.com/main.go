@@ -20,7 +20,7 @@ var (
 func fourOhFour(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fourOhFourView.Render(w, nil)
+	fourOhFourView.Render(w, r, nil)
 }
 
 func must(err error) {
@@ -52,9 +52,10 @@ func main() {
 	galleriesC := controllers.NewGalleries(services.Gallery, r)
 	fourOhFourView = views.NewView("bootstrap", "fourohfour")
 
-	requireUserMW := &middleware.RequireUser{
+	userMW := &middleware.User{
 		UserService: services.User,
 	}
+	requireUserMW := &middleware.RequireUser{}
 
 	// Handle lets you just get a view
 	r.Handle("/", staticC.Home).Methods("GET")
@@ -81,5 +82,5 @@ func main() {
 
 	r.NotFoundHandler = http.HandlerFunc(fourOhFour)
 	fmt.Println("Starting server on http://localhost:3000")
-	http.ListenAndServe(":3000", r)
+	http.ListenAndServe(":3000", userMW.Apply(r))
 }

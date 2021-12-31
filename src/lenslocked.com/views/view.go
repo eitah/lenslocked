@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+
+	"github.com/eitah/lenslocked/src/lenslocked.com/context"
 )
 
 var (
@@ -64,22 +66,27 @@ type View struct {
 	Layout   string
 }
 
-func (v *View) Render(w http.ResponseWriter, data interface{}) {
+func (v *View) Render(w http.ResponseWriter, r *http.Request, data interface{}) {
 	w.Header().Set("Content-Type", "text/html")
-	switch data.(type) {
+	var vd Data
+	switch d := data.(type) {
 	case Data:
-		// noop - no data wrapping needed.
+		// We need to do this so we can access the data in a var with the type Data.
+		vd = d
 	default:
-		data = Data{
+		// If the data IS NOT of the type Data, we create one and set the data to
+		// the Yield field like before.
+		vd = Data{
 			Yield: data,
 		}
 	}
 
+	vd.User = context.User(r.Context())
 	// we are using a buffer because writing any data to response writer
 	// results in a 200 status and we can undo the write.
 	var buf bytes.Buffer
 
-	if err := v.Template.ExecuteTemplate(&buf, v.Layout, data); err != nil {
+	if err := v.Template.ExecuteTemplate(&buf, v.Layout, vd); err != nil {
 		http.Error(w, "Something went wrong. If this error persists, please email support@lenslocked.com", http.StatusInternalServerError)
 		return
 	}
@@ -89,5 +96,5 @@ func (v *View) Render(w http.ResponseWriter, data interface{}) {
 }
 
 func (v *View) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	v.Render(w, nil)
+	v.Render(w, r, nil)
 }

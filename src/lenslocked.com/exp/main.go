@@ -1,50 +1,42 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/eitah/lenslocked/src/lenslocked.com/models"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
-)
-
-const (
-	host   = "localhost"
-	port   = 5432
-	user   = "eitah"
-	dbname = "lenslocked_dev" // this is the dev db
-
+	"log"
+	"net/http"
 )
 
 func main() {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", host, port, user, dbname)
-	services, err := models.NewServices(psqlInfo)
-	if err != nil {
-		panic(err)
-	}
-	us := services.User
-	defer services.Close()
-	services.DestructiveReset()
+	mux := http.NewServeMux()
 
-	user := models.User{
-		Name:     "Michael Scott",
-		Email:    "michael@dundermifflin.com",
-		Password: "bestboss",
-		Age:      39,
-	}
+	finalHandler := http.HandlerFunc(final)
+	mux.Handle("/", middlewareOne(middlewareTwo(finalHandler)))
 
-	if err := us.Create(&user); err != nil {
-		panic(err)
-	}
+	log.Println("listening on :3000")
+	err := http.ListenAndServe(":3000", mux)
+	log.Fatal(err)
+}
 
-	fmt.Printf("%+v\n", user)
-	if user.Remember == "" {
-		panic("Invalid remember token")
-	}
+func middlewareOne(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Running middleware one")
+		next.ServeHTTP(w, r)
+		log.Println("running middlware one again")
+	})
+}
 
-	// Now verify the user can be retrieved from that token
-	user2, err := us.ByRemember(user.Remember)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%+v\n", user2)
+func middlewareTwo(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Running middleware two")
+		if r.URL.Path == "/foo" {
+			return
+		}
+
+		next.ServeHTTP(w, r)
+		log.Println("running middlware two again")
+	})
+}
+
+func final(w http.ResponseWriter, r *http.Request) {
+	log.Println("Executing final handler")
+	w.Write([]byte("OK"))
 }
