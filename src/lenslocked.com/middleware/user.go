@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/eitah/lenslocked/src/lenslocked.com/context"
@@ -18,9 +17,6 @@ func (mw *User) Apply(next http.Handler) http.HandlerFunc {
 
 func (mw *User) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// todo check if a user is logged in. If so, call next(w,r)
-		// if not http.Redirect to /login
-		fmt.Println("in handler")
 		cookie, err := r.Cookie("remember_token")
 		if err != nil {
 			next(w, r)
@@ -33,7 +29,8 @@ func (mw *User) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// set the user on the context which uses our custom package to ensure typesafety.
+		// set the user on the context which uses our custom package
+		// to ensure typesafety.
 		ctx := r.Context()
 		ctx = context.WithUser(ctx, user)
 		r = r.WithContext(ctx)
