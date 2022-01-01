@@ -6,17 +6,17 @@ import (
 
 type Gallery struct {
 	gorm.Model
-	UserID uint     `gorm:"not null;index"`
-	Title  string   `gorm:"not_null"`
-	Images []string `gorm:"-"`
+	UserID uint    `gorm:"not null;index"`
+	Title  string  `gorm:"not_null"`
+	Images []Image `gorm:"-"`
 }
 
-func (g *Gallery) ImagesSplitN(nColumns int) [][]string {
+func (g *Gallery) ImagesSplitN(nColumns int) [][]Image {
 	// create our 2d slice
-	ret := make([][]string, nColumns)
+	ret := make([][]Image, nColumns)
 	// create nColumns inner slices sith a size of 0
 	for i := 0; i < nColumns; i++ {
-		ret[i] = make([]string, 0)
+		ret[i] = make([]Image, 0)
 	}
 
 	// iterate over images using % nColumns to determine which slice in ret to add the image to

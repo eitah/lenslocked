@@ -79,6 +79,8 @@ func main() {
 	r.HandleFunc("/galleries/{id:[0-9]+}/update", requireUserMW.ApplyFn(galleriesC.Update)).Methods("POST")
 	r.HandleFunc("/galleries/{id:[0-9]+}/delete", requireUserMW.ApplyFn(galleriesC.Delete)).Methods("POST")
 
+	// <form action="/galleries/{{.GalleryID}}/images/{{.Filename}}/delete" method="POST">
+	r.HandleFunc("/galleries/{id:[0-9]+}/images/{filename}/delete", requireUserMW.ApplyFn(galleriesC.ImageDelete)).Methods("POST")
 	r.HandleFunc("/galleries/{id:[0-9]+}/images", requireUserMW.ApplyFn(galleriesC.ImageUpload)).Methods("POST")
 
 	// http.Dir matches the path exactly with how it fetches the static file, so we use stripPrefix to help match the path.

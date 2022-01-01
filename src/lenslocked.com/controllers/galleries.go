@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -191,6 +192,41 @@ func (g *Galleries) Delete(w http.ResponseWriter, r *http.Request) {
 	url, err := g.r.Get(IndexGalleries).URL()
 	if err != nil {
 		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, url.Path, http.StatusFound)
+}
+
+// POST /galleries/:id/images/:filename/delete
+func (g *Galleries) ImageDelete(w http.ResponseWriter, r *http.Request) {
+	gallery, err := g.galleryByID(w, r)
+	if err != nil {
+		return
+	}
+
+	user := context.User(r.Context())
+	if gallery.UserID != user.ID {
+		http.Error(w, "You do not have permission to edit this gallery", http.StatusForbidden)
+		return
+	}
+
+	filename := mux.Vars(r)["filename"]
+	i := &models.Image{
+		Filename:  filename,
+		GalleryID: gallery.ID,
+	}
+
+	var vd views.Data
+	if err := g.ImageService.Delete(i); err != nil {
+		vd.SetAlert(err)
+		vd.Yield = gallery
+		g.EditView.Render(w, r, vd)
+		return
+	}
+
+	url, err := g.r.Get(EditGallery).URL("id", fmt.Sprintf("%v", gallery.ID))
+	if err != nil {
+		http.Redirect(w, r, "/galleries", http.StatusFound)
 		return
 	}
 	http.Redirect(w, r, url.Path, http.StatusFound)

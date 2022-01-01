@@ -9,9 +9,27 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+// Image is used to represent images stored in a gallery.
+// Instead references images stored on disk.
+type Image struct {
+	GalleryID uint
+	Filename  string
+}
+
+func (i *Image) Path() string {
+	return "/" + i.RelativePath()
+}
+
+func (i *Image) RelativePath() string {
+	// convert the gallery id to a string
+	galleryID := fmt.Sprintf("%v", i.GalleryID)
+	return filepath.ToSlash(filepath.Join("images", "galleries", galleryID, i.Filename))
+}
+
 type ImageService interface {
 	Create(galleryID uint, r io.Reader, filename string) error
-	ByGalleryID(galleryID uint) ([]string, error)
+	Delete(i *Image) error
+	ByGalleryID(galleryID uint) ([]Image, error)
 }
 
 type imageService struct {
@@ -43,19 +61,27 @@ func (is *imageService) Create(galleryID uint, r io.Reader, filename string) err
 	return nil
 }
 
-func (is *imageService) ByGalleryID(galleryID uint) ([]string, error) {
+func (is *imageService) Delete(i *Image) error {
+	return os.Remove(i.RelativePath())
+}
+
+func (is *imageService) ByGalleryID(galleryID uint) ([]Image, error) {
 	dir := is.imageDir(galleryID)
 	strings, err := filepath.Glob(filepath.Join(dir, "*"))
 	if err != nil {
 		return nil, err
 	}
 
+	ret := make([]Image, len(strings))
 	// Adds leading "/"" to all image file paths
-	for i := range strings {
-		strings[i] = "/" + strings[i]
+	for i, imageStr := range strings {
+		ret[i] = Image{
+			Filename:  filepath.Base(imageStr),
+			GalleryID: galleryID,
+		}
 	}
 
-	return strings, nil
+	return ret, nil
 }
 
 func (is *imageService) mkImageDir(galleryID uint) (string, error) {
