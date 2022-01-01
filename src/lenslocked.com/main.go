@@ -81,6 +81,10 @@ func main() {
 
 	r.HandleFunc("/galleries/{id:[0-9]+}/images", requireUserMW.ApplyFn(galleriesC.ImageUpload)).Methods("POST")
 
+	// http.Dir matches the path exactly with how it fetches the static file, so we use stripPrefix to help match the path.
+	imageHandler := http.FileServer(http.Dir("./images/"))
+	r.PathPrefix("/images/").Handler(http.StripPrefix("/images/", imageHandler))
+
 	r.NotFoundHandler = http.HandlerFunc(fourOhFour)
 	fmt.Println("Starting server on http://localhost:3000")
 	http.ListenAndServe(":3000", userMW.Apply(r))

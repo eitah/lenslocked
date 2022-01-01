@@ -2,12 +2,15 @@
 <div class="row">
 <div class="col-md-12">
 <h1>{{.Title}}</h1>
-<ul>
-{{range .Images}}
-  <li>{{.}}</li>
+{{range .ImagesSplitN 3}}
+  <div class="col-md-4">
+  {{range .}}
+  <img src="{{.}}" class="thumbnail">
+  {{end}}
+  </div>
 {{end}}
-</ul>
 </div>
 </div>
+<style> .thumbnail { width: 100%; } </style>
 
 {{end}}

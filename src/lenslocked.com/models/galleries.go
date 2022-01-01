@@ -11,6 +11,22 @@ type Gallery struct {
 	Images []string `gorm:"-"`
 }
 
+func (g *Gallery) ImagesSplitN(nColumns int) [][]string {
+	// create our 2d slice
+	ret := make([][]string, nColumns)
+	// create nColumns inner slices sith a size of 0
+	for i := 0; i < nColumns; i++ {
+		ret[i] = make([]string, 0)
+	}
+
+	// iterate over images using % nColumns to determine which slice in ret to add the image to
+	for i, img := range g.Images {
+		bucket := i % nColumns
+		ret[bucket] = append(ret[bucket], img)
+	}
+	return ret
+}
+
 var (
 	ErrUserIDRequired    modelError = "models: UserID is required on this gallery"
 	ErrGalleryIdRequired modelError = "models: GalleryID is required"

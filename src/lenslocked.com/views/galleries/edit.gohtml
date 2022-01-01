@@ -2,6 +2,9 @@
 <div class="row">
   <div class="col-md-10 col-md-offset-1">
     <h2>Edit your gallery</h2>
+    <a href="/galleries/show/{{.ID}}">
+    (View this Gallery)
+    </a>
     <hr>
     </div>
     </div>
@@ -63,11 +66,17 @@
 {{end}}
 
 {{define "galleryImages"}}
-<ul>
-{{range .Images}}
-  <li>{{.}}</li>
+{{range .ImagesSplitN 6}}
+  <div class="col-md-2">
+    {{range .}}
+      <a href="{{.}}">
+        <img src="{{.}}" class="thumbnail">
+      </a>
+    {{end}}
+  </div>
 {{end}}
-</ul>
+<!-- Todo Remove inline styles when deploying -->
+<style> .thumbnail { width: 100%; } </style>
 {{end}}
 
 {{define "deleteGalleryForm"}}
