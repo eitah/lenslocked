@@ -25,22 +25,10 @@ func fourOhFour(w http.ResponseWriter, r *http.Request) {
 	fourOhFourView.Render(w, r, nil)
 }
 
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
-const (
-	host   = "localhost"
-	port   = 5432
-	user   = "eitah"
-	dbname = "lenslocked_dev" // this is the dev db
-)
-
 func main() {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", host, port, user, dbname)
-	services, err := models.NewServices(psqlInfo)
+	config := DefaultConfig()
+	dbConfig := DefaultPostgresConfig()
+	services, err := models.NewServices(dbConfig.Dialect(), dbConfig.ConnectionInfo())
 	if err != nil {
 		panic(err)
 	}
@@ -102,11 +90,9 @@ func main() {
 		panic(err)
 	}
 
-	// isProd is an env detector.
-	// TODO: update to be a config variables
-	isProd := false
 	// although forbidden to do this, unless server restarts
 	// this would reset, so this could be a static token instead
-	csrfMW := csrf.Protect(randString, csrf.Secure(isProd))
-	http.ListenAndServe(":3000", csrfMW(userMW.Apply(r)))
+	csrfMW := csrf.Protect(randString, csrf.Secure(config.IsProd()))
+	port := fmt.Sprintf(":%d", config.Port)
+	http.ListenAndServe(port, csrfMW(userMW.Apply(r)))
 }

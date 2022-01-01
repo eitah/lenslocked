@@ -4,7 +4,7 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-func NewServices(connectionInfo string) (*Services, error) {
+func NewServices(dialect, connectionInfo string) (*Services, error) {
 	db, err := gorm.Open("postgres", connectionInfo)
 	if err != nil {
 		return nil, err
