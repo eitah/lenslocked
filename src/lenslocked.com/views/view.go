@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 
 	"github.com/eitah/lenslocked/src/lenslocked.com/context"
@@ -26,8 +27,12 @@ func NewView(layout string, files ...string) *View {
 	)
 
 	t, err := template.New("").Funcs(template.FuncMap{
+		// the functions here can be used the same way if, eq, not etc can be used
 		"csrfField": func() (template.HTML, error) {
 			return "", errors.New("eli the gorilla/csrf lib didnt correctly replace this stub with a valid function so I am blowing up")
+		},
+		"pathEscape": func(s string) string {
+			return url.PathEscape(s)
 		},
 	}).ParseFiles(files...)
 	if err != nil {
