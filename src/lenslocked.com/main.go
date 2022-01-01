@@ -49,7 +49,7 @@ func main() {
 	r := mux.NewRouter()
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers(services.User, r)
-	galleriesC := controllers.NewGalleries(services.Gallery, r)
+	galleriesC := controllers.NewGalleries(services.Gallery, services.Image, r)
 	fourOhFourView = views.NewView("bootstrap", "fourohfour")
 
 	userMW := &middleware.User{
