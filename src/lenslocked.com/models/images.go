@@ -11,7 +11,7 @@ import (
 
 type ImageService interface {
 	Create(galleryID uint, r io.Reader, filename string) error
-	// ByGalleryID(galleryID uint) ([]string, error)
+	ByGalleryID(galleryID uint) ([]string, error)
 }
 
 type imageService struct {
@@ -25,7 +25,7 @@ func NewImageService(db *gorm.DB) ImageService {
 }
 
 func (is *imageService) Create(galleryID uint, r io.Reader, filename string) error {
-	galleryPath, err := is.mkImagePath(galleryID)
+	galleryPath, err := is.mkImageDir(galleryID)
 	if err != nil {
 		return err
 	}
@@ -43,10 +43,24 @@ func (is *imageService) Create(galleryID uint, r io.Reader, filename string) err
 	return nil
 }
 
-func (is *imageService) mkImagePath(galleryID uint) (string, error) {
-	galleryPath := filepath.Join("images", "galleries", fmt.Sprintf("%v", galleryID))
-	if err := os.MkdirAll(galleryPath, 0755); err != nil {
+func (is *imageService) ByGalleryID(galleryID uint) ([]string, error) {
+	dir := is.imageDir(galleryID)
+	strings, err := filepath.Glob(filepath.Join(dir, "*"))
+	if err != nil {
+		return nil, err
+	}
+	return strings, nil
+}
+
+func (is *imageService) mkImageDir(galleryID uint) (string, error) {
+	dir := is.imageDir(galleryID)
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", err
 	}
-	return galleryPath, nil
+	return dir, nil
+}
+
+func (is *imageService) imageDir(galleryID uint) string {
+	return filepath.Join("images", "galleries", fmt.Sprintf("%v", galleryID))
 }

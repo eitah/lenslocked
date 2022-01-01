@@ -63,7 +63,11 @@
 {{end}}
 
 {{define "galleryImages"}}
-<div>Coming soon..says the fox</div>
+<ul>
+{{range .Images}}
+  <li>{{.}}</li>
+{{end}}
+</ul>
 {{end}}
 
 {{define "deleteGalleryForm"}}
