@@ -66,21 +66,16 @@
 {{end}}
 
 {{define "galleryImages"}}
-{{range .ImagesSplitN 6}}
-  <div class="col-md-2">
-    {{range .}}
-      <a href="{{.Path}}">
-        <img src="{{.Path}}" class="thumbnail">
-      </a>
-      {{template "deleteImageForm" .}}
-    {{end}}
-  </div>
-{{end}}
-<!-- Todo Remove inline styles when deploying -->
-<style>
-  .thumbnail { width: 100%; magin-bottom: 6px }
-  .btn-delete { margin-bottom: 6px }
-  </style>
+  {{range .ImagesSplitN 6}}
+    <div class="col-md-2">
+      {{range .}}
+        <a href="{{.Path}}">
+          <img src="{{.Path}}" class="thumbnail">
+        </a>
+        {{template "deleteImageForm" .}}
+      {{end}}
+    </div>
+  {{end}}
 {{end}}
 
 {{define "deleteGalleryForm"}}
