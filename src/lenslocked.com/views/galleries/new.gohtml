@@ -14,7 +14,7 @@
 
 {{define "signupForm"}}
 <form action="/galleries" method="POST">
-
+{{csrfField}}
 <div class="form-group">
 <label for="title">Title</label>
 <input name="title" type="text" class="form-control" id="title" placeholder="what title do you want for the gallery">

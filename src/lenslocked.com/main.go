@@ -7,7 +7,9 @@ import (
 	"github.com/eitah/lenslocked/src/lenslocked.com/controllers"
 	"github.com/eitah/lenslocked/src/lenslocked.com/middleware"
 	"github.com/eitah/lenslocked/src/lenslocked.com/models"
+	"github.com/eitah/lenslocked/src/lenslocked.com/rand"
 	"github.com/eitah/lenslocked/src/lenslocked.com/views"
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -94,5 +96,17 @@ func main() {
 
 	r.NotFoundHandler = http.HandlerFunc(fourOhFour)
 	fmt.Println("Starting server on http://localhost:3000")
-	http.ListenAndServe(":3000", userMW.Apply(r))
+
+	randString, err := rand.Bytes(32)
+	if err != nil {
+		panic(err)
+	}
+
+	// isProd is an env detector.
+	// TODO: update to be a config variables
+	isProd := false
+	// although forbidden to do this, unless server restarts
+	// this would reset, so this could be a static token instead
+	csrfMW := csrf.Protect(randString, csrf.Secure(isProd))
+	http.ListenAndServe(":3000", csrfMW(userMW.Apply(r)))
 }
