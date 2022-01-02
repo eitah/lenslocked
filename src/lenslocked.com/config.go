@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+)
 
 type PostgresConfig struct {
 	Host     string `json:"host"`
@@ -11,21 +15,42 @@ type PostgresConfig struct {
 }
 
 type Config struct {
-	Port    int    `json:"port"`
-	Env     string `json:"env"`
-	Pepper  string `json:"pepper"`
-	HMACKey string `json:"hmac_key"`
+	Port     int            `json:"port"`
+	Env      string         `json:"env"`
+	Pepper   string         `json:"pepper"`
+	HMACKey  string         `json:"hmac_key"`
+	Database PostgresConfig `json:"database"`
 }
 
-func (c PostgresConfig) Dialect() string {
-	return "postgres"
-}
-
-func (c PostgresConfig) ConnectionInfo() string {
-	if c.Password == "" {
-		return fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", c.Host, c.Port, c.User, c.Name)
+func NewConfig(configRequired bool) Config {
+	file, err := os.Open("./.config")
+	if err != nil {
+		if configRequired {
+			panic(err)
+		}
+		fmt.Printf("Failed to find config, using defaults. Error: %s\n", err)
+		return DefaultConfig()
 	}
-	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", c.Host, c.Port, c.User, c.Password, c.Name)
+
+	var config Config
+	if err := json.NewDecoder(file).Decode(&config); err != nil {
+		panic(err)
+	}
+	return config
+}
+
+func DefaultConfig() Config {
+	return Config{
+		Port:     3000,
+		Env:      "dev",
+		Pepper:   "secret-random-string",
+		HMACKey:  "secret-hmac-key",
+		Database: DefaultPostgresConfig(),
+	}
+}
+
+func (c Config) IsProd() bool {
+	return c.Env == "prod"
 }
 
 func DefaultPostgresConfig() PostgresConfig {
@@ -38,15 +63,13 @@ func DefaultPostgresConfig() PostgresConfig {
 	}
 }
 
-func (c Config) IsProd() bool {
-	return c.Env == "prod"
+func (c PostgresConfig) Dialect() string {
+	return "postgres"
 }
 
-func DefaultConfig() Config {
-	return Config{
-		Port:    3000,
-		Env:     "dev",
-		Pepper:  "secret-random-string",
-		HMACKey: "secret-hmac-key",
+func (c PostgresConfig) ConnectionInfo() string {
+	if c.Password == "" {
+		return fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", c.Host, c.Port, c.User, c.Name)
 	}
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", c.Host, c.Port, c.User, c.Password, c.Name)
 }

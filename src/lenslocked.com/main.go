@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 
@@ -26,10 +27,11 @@ func fourOhFour(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	config := DefaultConfig()
-	dbConfig := DefaultPostgresConfig()
+	boolPtr := flag.Bool("prod", false, "Provide this flag in production. This ensures that a .config file is provided before the app starts.")
+	flag.Parse()
+	config := NewConfig(*boolPtr)
 	services, err := models.NewServices(
-		models.WithGorm(dbConfig.Dialect(), dbConfig.ConnectionInfo()),
+		models.WithGorm(config.Database.Dialect(), config.Database.ConnectionInfo()),
 		models.WithLogMode(!config.IsProd()),
 		models.WithUser(config.Pepper, config.HMACKey),
 		models.WithGallery(),
