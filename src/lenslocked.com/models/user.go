@@ -10,8 +10,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const hmacSecretKey = "secret-hmac-key"
-
 var (
 	// ErrNotFound is return when a resource cannot be found in the db
 	ErrNotFound modelError = "models: resource not found"
@@ -33,9 +31,6 @@ var (
 	ErrRememberRequired modelError = "models: remember token is required"
 	// ErrRememberTooShort means our remember token is somehow invalid
 	ErrRememberTooShort modelError = "models: remmember token too short"
-
-	// userPWPepper - the pepper value is a secret random string that we will save to our config eventually
-	userPWPepper = "georgian-kava-licit-unread"
 )
 
 type modelError string
@@ -76,11 +71,13 @@ type UserService interface {
 
 type userService struct {
 	UserDB
+	pepper string
 }
 
 type userValidator struct {
 	UserDB
 	hmac       hash.HMAC
+	pepper     string
 	emailRegex *regexp.Regexp
 }
 
@@ -106,21 +103,23 @@ type UserDB interface {
 	Delete(id uint) error
 }
 
-func NewUserService(db *gorm.DB) UserService {
+func NewUserService(db *gorm.DB, pepper, hmacSecretKey string) UserService {
 	ug := &userGorm{
 		db: db,
 	}
 	hmac := hash.NewHMAC(hmacSecretKey)
-	uv := NewUserValidator(ug, hmac)
+	uv := NewUserValidator(ug, hmac, pepper)
 	return &userService{
 		UserDB: uv,
+		pepper: pepper,
 	}
 }
 
-func NewUserValidator(udb UserDB, hmac hash.HMAC) *userValidator {
+func NewUserValidator(udb UserDB, hmac hash.HMAC, pepper string) *userValidator {
 	return &userValidator{
 		UserDB:     udb,
 		hmac:       hmac,
+		pepper:     pepper,
 		emailRegex: regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
 	}
 }
@@ -131,7 +130,7 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 		return nil, err
 	}
 
-	pepperedPWBytes := []byte(password + userPWPepper)
+	pepperedPWBytes := []byte(password + us.pepper)
 	if err := bcrypt.CompareHashAndPassword([]byte(foundUser.PasswordHash), pepperedPWBytes); err != nil {
 		if err == bcrypt.ErrMismatchedHashAndPassword {
 			return nil, ErrPasswordIncorrect
@@ -265,7 +264,7 @@ func (uv *userValidator) bcryptPassword(user *User) error {
 		return nil
 	}
 	// the pepper is a const that we merge with the password just to up entropy.
-	pepperedPWBytes := []byte(user.Password + userPWPepper)
+	pepperedPWBytes := []byte(user.Password + uv.pepper)
 	// DefaultCost is a const representing computing power needed for working the hash, recognizing that the higher the cost the more expensive the app.
 	hashedBytes, err := bcrypt.GenerateFromPassword(pepperedPWBytes, bcrypt.DefaultCost)
 	if err != nil {

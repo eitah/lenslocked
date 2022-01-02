@@ -4,26 +4,65 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-func NewServices(dialect, connectionInfo string) (*Services, error) {
-	db, err := gorm.Open("postgres", connectionInfo)
-	if err != nil {
-		return nil, err
-	}
-	db.LogMode(true)
-
-	return &Services{
-		Gallery: NewGalleryService(db),
-		User:    NewUserService(db),
-		Image:   NewImageService(db),
-		db:      db,
-	}, nil
-}
-
 type Services struct {
 	Gallery GalleryService
 	User    UserService
 	Image   ImageService
 	db      *gorm.DB
+}
+
+// named function for declaring service configs
+type ServicesConfig func(*Services) error
+
+// for every provided config, iterate pointing to the existing services object.
+func NewServices(cfgs ...ServicesConfig) (*Services, error) {
+	var s Services
+	for _, cfg := range cfgs {
+		// run the function passing in a services pointer
+		if err := cfg(&s); err != nil {
+			return nil, err
+		}
+	}
+	return &s, nil
+}
+
+func WithGorm(dialect, connectionInfo string) ServicesConfig {
+	return func(s *Services) error {
+		db, err := gorm.Open(dialect, connectionInfo)
+		if err != nil {
+			return err
+		}
+		s.db = db
+		return nil
+	}
+}
+
+func WithLogMode(mode bool) ServicesConfig {
+	return func(s *Services) error {
+		s.db.LogMode(mode)
+		return nil
+	}
+}
+
+func WithUser(pepper, hmacKey string) ServicesConfig {
+	return func(s *Services) error {
+		s.User = NewUserService(s.db, pepper, hmacKey)
+		return nil
+	}
+}
+
+func WithGallery() ServicesConfig {
+	return func(s *Services) error {
+		s.Gallery = NewGalleryService(s.db)
+		return nil
+	}
+}
+
+func WithImage() ServicesConfig {
+	return func(s *Services) error {
+		s.Image = NewImageService(s.db)
+		return nil
+	}
 }
 
 func (s *Services) Close() {

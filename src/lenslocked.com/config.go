@@ -10,8 +10,15 @@ type PostgresConfig struct {
 	Name     string `json:"name"`
 }
 
+type Config struct {
+	Port    int    `json:"port"`
+	Env     string `json:"env"`
+	Pepper  string `json:"pepper"`
+	HMACKey string `json:"hmac_key"`
+}
+
 func (c PostgresConfig) Dialect() string {
-	return "posgres"
+	return "postgres"
 }
 
 func (c PostgresConfig) ConnectionInfo() string {
@@ -31,18 +38,15 @@ func DefaultPostgresConfig() PostgresConfig {
 	}
 }
 
-type Config struct {
-	Port int
-	Env  string
-}
-
 func (c Config) IsProd() bool {
 	return c.Env == "prod"
 }
 
 func DefaultConfig() Config {
 	return Config{
-		Port: 3000,
-		Env:  "dev",
+		Port:    3000,
+		Env:     "dev",
+		Pepper:  "secret-random-string",
+		HMACKey: "secret-hmac-key",
 	}
 }
