@@ -1,42 +1,37 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
+	"log"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/kelseyhightower/envconfig"
 )
 
 type PostgresConfig struct {
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
+	Host        string `envconfig:"PGHOST"`
+	Port        int    `envconfig:"PGPORT"`
+	User        string `envconfig:"PGUSER"`
+	Password    string `envconfig:"PGPASSWORD"`
+	Name        string `envconfig:"PGNAME"`
+	DatabaseURL string `envconfig:"DATABASE_URL"`
 }
 
 type Config struct {
-	Port     int            `json:"port"`
-	Env      string         `json:"env"`
-	Pepper   string         `json:"pepper"`
-	HMACKey  string         `json:"hmac_key"`
-	Database PostgresConfig `json:"database"`
+	Port     int
+	Env      string
+	Pepper   string
+	HMACKey  string `split_words:"true"`
+	Database PostgresConfig
 }
 
 func NewConfig(configRequired bool) Config {
-	file, err := os.Open("./.config")
-	if err != nil {
-		if configRequired {
-			panic(err)
-		}
-		fmt.Printf("Failed to find config, using defaults. Error: %s\n", err)
-		return DefaultConfig()
+	var c Config
+	if err := envconfig.Process("", &c); err != nil {
+		log.Fatal(err)
 	}
 
-	var config Config
-	if err := json.NewDecoder(file).Decode(&config); err != nil {
-		panic(err)
-	}
-	return config
+	spew.Dump(c)
+	return c
 }
 
 func DefaultConfig() Config {
@@ -68,8 +63,9 @@ func (c PostgresConfig) Dialect() string {
 }
 
 func (c PostgresConfig) ConnectionInfo() string {
-	if c.Password == "" {
-		return fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", c.Host, c.Port, c.User, c.Name)
-	}
-	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", c.Host, c.Port, c.User, c.Password, c.Name)
+	return c.DatabaseURL
+	// if c.Password == "" {
+	// 	return fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", c.Host, c.Port, c.User, c.Name)
+	// }
+	// return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", c.Host, c.Port, c.User, c.Password, c.Name)
 }

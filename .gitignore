@@ -5,3 +5,4 @@ modd.conf
 # images don't need to be saved here if they're in the database
 src/lenslocked.com/images/**
 src/lenslocked.com/.config
+src/lenslocked.com/.envrc
