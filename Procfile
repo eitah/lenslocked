@@ -1,1 +1,1 @@
-web: go run *.go --prod true
+web: bin/lenslocked.com --prod=true
