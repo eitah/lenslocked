@@ -14,10 +14,9 @@ import (
 )
 
 var (
-	HerokuPathToOrigin string = "../app/src/lenslocked.com/"
-	LayoutDir          string = HerokuPathToOrigin + "views/layouts/"
-	TemplateDir        string = HerokuPathToOrigin + "views/"
-	TemplateExt        string = ".gohtml"
+	LayoutDir   string = "views/layouts/"
+	TemplateDir string = "views/"
+	TemplateExt string = ".gohtml"
 )
 
 func NewView(layout string, files ...string) *View {
