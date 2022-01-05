@@ -32,7 +32,7 @@ func NewConfig(configRequired bool) Config {
 	}
 
 	// dump directory at pwd?
-	files, err := os.ReadDir("..")
+	files, err := os.ReadDir("../app/src/lenslocked.com")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -86,7 +86,7 @@ func main() {
 	r.PathPrefix("/images/").Handler(http.StripPrefix("/images/", imageHandler))
 
 	// Assets
-	assetHandler := http.FileServer(http.Dir("./assets/"))
+	assetHandler := http.FileServer(http.Dir(views.HerokuPathToOrigin + "/assets/"))
 	assetHandler = http.StripPrefix("/assets/", assetHandler)
 	r.PathPrefix("/assets/").Handler(assetHandler)
 
