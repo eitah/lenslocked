@@ -72,7 +72,7 @@ func (c PostgresConfig) Dialect() string {
 }
 
 func (c PostgresConfig) ConnectionInfo() string {
-	return c.DatabaseURL
+	return c.DatabaseURL + "?require"
 	// if c.Password == "" {
 	// 	return fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", c.Host, c.Port, c.User, c.Name)
 	// }
