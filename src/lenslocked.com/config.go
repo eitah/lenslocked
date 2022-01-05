@@ -1,9 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"os"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/kelseyhightower/envconfig"
 )
 
@@ -30,7 +31,15 @@ func NewConfig(configRequired bool) Config {
 		log.Fatal(err)
 	}
 
-	spew.Dump(c)
+	// dump directory at pwd?
+	files, err := os.ReadDir("..")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, f := range files {
+		fmt.Println(f.Name())
+	}
 	return c
 }
 
