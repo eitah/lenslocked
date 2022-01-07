@@ -3,7 +3,9 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/eitah/lenslocked/src/lenslocked.com/context"
 	"github.com/eitah/lenslocked/src/lenslocked.com/models"
 	"github.com/eitah/lenslocked/src/lenslocked.com/rand"
 	"github.com/eitah/lenslocked/src/lenslocked.com/views"
@@ -114,6 +116,30 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, url.Path, http.StatusFound)
+}
+
+// Logout is used to delete a user's session cookie and invalidate their
+// current remember token, which will sign the current user out.
+//
+// POST /logout
+func (u *Users) Logout(w http.ResponseWriter, r *http.Request) {
+	// FIrst expire the users cookie
+	cookie := http.Cookie{
+		Name:     "remember_token",
+		Value:    "",
+		Expires:  time.Now(),
+		HttpOnly: true,
+	}
+	http.SetCookie(w, &cookie)
+	// then we add a new remember token
+	user := context.User(r.Context())
+	// ignore errors because they are 1) unlikely and 2) we cant recover now that
+	// we don't have a valid cookie
+	token, _ := rand.RememberToken()
+	user.Remember = token
+	u.UserService.Update(user)
+	// Send the user to the home page
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
