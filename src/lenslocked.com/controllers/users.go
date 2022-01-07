@@ -71,10 +71,13 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 
 	url, err := u.r.Get(IndexGalleries).URL()
 	if err != nil {
-		http.Redirect(w, r, "/", http.StatusFound)
+		views.RedirectAlert(w, r, "/", http.StatusFound, views.AlertError(fmt.Sprintf("Something went wrong: %s", err))
 		return
 	}
-	http.Redirect(w, r, url.Path, http.StatusFound)
+	views.RedirectAlert(w, r, "/galleries", http.StatusFound, views.Alert{
+		Level:   views.AlertLvlSuccess,
+		Message: fmt.Sprint("Welcome to Lenslocked.com, %s!", user.Name),
+	})
 }
 
 type LoginForm struct {
@@ -112,10 +115,13 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 
 	url, err := u.r.Get(IndexGalleries).URL()
 	if err != nil {
-		http.Redirect(w, r, "/", http.StatusFound)
+		views.RedirectAlert(w, r, "/", http.StatusFound, views.AlertError(fmt.Sprintf("Something went wrong: %s", err))
 		return
 	}
-	http.Redirect(w, r, url.Path, http.StatusFound)
+	views.RedirectAlert(w, r, "/galleries", http.StatusFound, views.Alert{
+		Level:   views.AlertLvlSuccess,
+		Message: fmt.Sprint("Welcome to Lenslocked.com, %s!", user.Name),
+	})
 }
 
 // Logout is used to delete a user's session cookie and invalidate their

@@ -93,6 +93,11 @@ func (v *View) Render(w http.ResponseWriter, r *http.Request, data interface{}) 
 		}
 	}
 
+	if alert := getAlert(r); alert != nil {
+		vd.Alert = alert
+		clearAlert(w)
+	}
+
 	vd.User = context.User(r.Context())
 	// we are using a buffer because writing any data to response writer
 	// results in a 200 status and we can undo the write.
