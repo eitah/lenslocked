@@ -84,8 +84,13 @@ func (pwrv *pwResetValidator) ByToken(token string) (*pwReset, error) {
 
 func (pwrg *pwResetGorm) ByToken(tokenHash string) (*pwReset, error) {
 	var pwr pwReset
-	err := pwrg.db.First(pwrg.db.Where("token_hash = ?", tokenHash), &pwr).Error
-	if err != nil {
+	// // spew.Dump(tokenHash)
+
+	// pwr := pwReset{
+	// 	TokenHash: tokenHash,
+	// }
+	db := pwrg.db.Where("token_hash = ?", tokenHash)
+	if err := db.First(&pwr).Error; err != nil {
 		return nil, err
 	}
 	return &pwr, nil

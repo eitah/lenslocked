@@ -475,8 +475,6 @@ func (us *userService) CompleteReset(token, newPw string) (*User, error) {
 		}
 		return nil, err
 	}
-	// todo if the pw reset is over 12 hours old it is invalid and should return
-	// the err token invalid error
 	duration := time.Since(pwr.CreatedAt)
 	if duration > 12*time.Hour {
 		fmt.Printf("Password Reset token for user %d is too old: %d\n", pwr.UserID, duration)

@@ -15,20 +15,24 @@ import (
 
 func NewUsers(us models.UserService, emailClient email.EmailClient, r *mux.Router) *Users {
 	return &Users{
-		NewView:     views.NewView("bootstrap", "users/new"),
-		LoginView:   views.NewView("bootstrap", "users/login"),
-		UserService: us,
-		Email:       emailClient,
-		r:           r,
+		NewView:      views.NewView("bootstrap", "users/new"),
+		LoginView:    views.NewView("bootstrap", "users/login"),
+		ForgotPWView: views.NewView("bootstrap", "users/forgot_pw"),
+		ResetPWView:  views.NewView("bootstrap", "users/reset_pw"),
+		UserService:  us,
+		Email:        emailClient,
+		r:            r,
 	}
 }
 
 type Users struct {
-	NewView     *views.View
-	LoginView   *views.View
-	UserService models.UserService
-	Email       email.EmailClient
-	r           *mux.Router
+	NewView      *views.View
+	LoginView    *views.View
+	ForgotPWView *views.View
+	ResetPWView  *views.View
+	UserService  models.UserService
+	Email        email.EmailClient
+	r            *mux.Router
 }
 
 type SignupForm struct {
@@ -43,6 +47,20 @@ func (u *Users) New(w http.ResponseWriter, r *http.Request) {
 	var form SignupForm
 	parseURLParams(r, &form) // ensures that if there is form data in query params will be prefilled.
 	u.NewView.Render(w, r, form)
+}
+
+// GET /forgot
+func (u *Users) Forgot(w http.ResponseWriter, r *http.Request) {
+	var form ResetPWForm
+	parseURLParams(r, &form) // ensures that if there is form data in query params will be prefilled.
+	u.ForgotPWView.Render(w, r, form)
+}
+
+// GET /reset
+func (u *Users) Reset(w http.ResponseWriter, r *http.Request) {
+	var form ResetPWForm
+	parseURLParams(r, &form) // ensures that if there is form data in query params will be prefilled.
+	u.ResetPWView.Render(w, r, form)
 }
 
 // POST /signup
@@ -142,7 +160,7 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 //
 // POST /logout
 func (u *Users) Logout(w http.ResponseWriter, r *http.Request) {
-	// FIrst expire the users cookie
+	// First expire the users cookie
 	cookie := http.Cookie{
 		Name:     "remember_token",
 		Value:    "",
@@ -199,4 +217,64 @@ func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprintln(w, "remember me token is:", cookie.Value)
+}
+
+type ResetPWForm struct {
+	Email    string `schema:"email"`
+	Token    string `schema:"token"`
+	Password string `schema:"password"`
+}
+
+// InitiateReset starts a reset password flow
+func (u *Users) InitiateReset(w http.ResponseWriter, r *http.Request) {
+	var vd views.Data
+	var form ResetPWForm
+	vd.Yield = &form
+
+	if err := parseForm(r, &form); err != nil {
+		vd.SetAlert(err)
+		views.RedirectAlert(w, r, "/reset", http.StatusFound, *vd.Alert)
+	}
+
+	token, err := u.UserService.InitiateReset(form.Email)
+	if err != nil {
+		vd.SetAlert(err)
+		u.ForgotPWView.Render(w, r, vd)
+		return
+	}
+
+	if err := u.Email.SendForgotPasswordEmail(token); err != nil {
+		vd.SetAlert(err)
+		u.ForgotPWView.Render(w, r, vd)
+		return
+	}
+
+	views.RedirectAlert(w, r, fmt.Sprintf("/reset?token=%s", token), http.StatusFound, views.Alert{
+		Level:   views.AlertLvlSuccess,
+		Message: fmt.Sprintf("Reset password sent to %s! You have 12 hours. %s", form.Email, token),
+	})
+}
+
+// CompleteReset concludes a reset password flow
+func (u *Users) CompleteReset(w http.ResponseWriter, r *http.Request) {
+	var vd views.Data
+	var form ResetPWForm
+	vd.Yield = &form
+
+	if err := parseForm(r, &form); err != nil {
+		vd.SetAlert(err)
+		views.RedirectAlert(w, r, fmt.Sprintf("/reset?token=%s", form.Token), http.StatusFound, *vd.Alert)
+	}
+
+	user, err := u.UserService.CompleteReset(form.Token, form.Password)
+	if err != nil {
+		vd.SetAlert(err)
+		u.ResetPWView.Render(w, r, vd)
+		return
+	}
+	u.signIn(w, user)
+	views.RedirectAlert(w, r, "/galleries", http.StatusFound, views.Alert{
+		Level:   views.AlertLvlSuccess,
+		Message: fmt.Sprintf("Password changed successfully! Enjoy our site, %s", user.Name),
+	})
 }
