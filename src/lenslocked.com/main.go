@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/eitah/lenslocked/src/lenslocked.com/controllers"
+	"github.com/eitah/lenslocked/src/lenslocked.com/email"
 	"github.com/eitah/lenslocked/src/lenslocked.com/middleware"
 	"github.com/eitah/lenslocked/src/lenslocked.com/models"
 	"github.com/eitah/lenslocked/src/lenslocked.com/rand"
@@ -30,6 +31,8 @@ func main() {
 	boolPtr := flag.Bool("prod", false, "Provide this flag in production. This ensures that a .config file is provided before the app starts.")
 	flag.Parse()
 	config := NewConfig(*boolPtr)
+	mgCfg := config.Mailgun
+	emailClient := email.NewEmailClient(mgCfg.Domain, mgCfg.APIKey, mgCfg.PublicAPIKey, mgCfg.ElisEmailAddress)
 	services, err := models.NewServices(
 		models.WithGorm(config.Database.Dialect(), config.Database.ConnectionInfo()),
 		models.WithLogMode(!config.IsProd()),
@@ -46,7 +49,7 @@ func main() {
 
 	r := mux.NewRouter()
 	staticC := controllers.NewStatic()
-	usersC := controllers.NewUsers(services.User, r)
+	usersC := controllers.NewUsers(services.User, emailClient, r)
 	galleriesC := controllers.NewGalleries(services.Gallery, services.Image, r)
 	fourOhFourView = views.NewView("bootstrap", "fourohfour")
 

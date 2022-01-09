@@ -16,9 +16,10 @@ type PostgresConfig struct {
 }
 
 type MailgunConfig struct {
-	APIKey       string `envconfig:"MAILGUN_API_KEY"`
-	PublicAPIKey string `envconfig:"MAILGUN_PUBLIC_API_KEY"`
-	Domain       string `envconfig:"MAILGUN_DOMAIN"`
+	APIKey           string `envconfig:"MAILGUN_API_KEY"`
+	PublicAPIKey     string `envconfig:"MAILGUN_PUBLIC_API_KEY"`
+	Domain           string `envconfig:"MAILGUN_DOMAIN"`
+	ElisEmailAddress string `envconfig:"ELIS_EMAIL_ADDRESS"`
 }
 
 type Config struct {

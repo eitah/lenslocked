@@ -14,4 +14,5 @@ require (
 	github.com/lib/pq v1.10.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/crypto v0.0.0-20211202192323-5770296d904e // indirect
+	gopkg.in/mailgun/mailgun-go.v1 v1.1.1 // indirect
 )

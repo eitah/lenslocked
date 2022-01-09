@@ -6,17 +6,19 @@ import (
 	"time"
 
 	"github.com/eitah/lenslocked/src/lenslocked.com/context"
+	"github.com/eitah/lenslocked/src/lenslocked.com/email"
 	"github.com/eitah/lenslocked/src/lenslocked.com/models"
 	"github.com/eitah/lenslocked/src/lenslocked.com/rand"
 	"github.com/eitah/lenslocked/src/lenslocked.com/views"
 	"github.com/gorilla/mux"
 )
 
-func NewUsers(us models.UserService, r *mux.Router) *Users {
+func NewUsers(us models.UserService, emailClient email.EmailClient, r *mux.Router) *Users {
 	return &Users{
 		NewView:     views.NewView("bootstrap", "users/new"),
 		LoginView:   views.NewView("bootstrap", "users/login"),
 		UserService: us,
+		Email:       emailClient,
 		r:           r,
 	}
 }
@@ -25,6 +27,7 @@ type Users struct {
 	NewView     *views.View
 	LoginView   *views.View
 	UserService models.UserService
+	Email       email.EmailClient
 	r           *mux.Router
 }
 
@@ -69,6 +72,11 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := u.Email.SendWelcomeEmail(); err != nil {
+		fmt.Printf("Error sending welcome email: %s\n", err)
+		// continuing because this is not a fatal error
+	}
+
 	url, err := u.r.Get(IndexGalleries).URL()
 	if err != nil {
 		vd.AlertError(fmt.Sprintf("Something went wrong: %s", err))
@@ -77,7 +85,7 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	views.RedirectAlert(w, r, url.Path, http.StatusFound, views.Alert{
 		Level:   views.AlertLvlSuccess,
-		Message: fmt.Sprint("Welcome to Lenslocked.com, %s!", user.Name),
+		Message: fmt.Sprintf("Welcome to Lenslocked.com, %s!", user.Name),
 	})
 }
 
