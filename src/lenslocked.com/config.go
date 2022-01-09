@@ -15,12 +15,19 @@ type PostgresConfig struct {
 	DatabaseURL string `envconfig:"DATABASE_URL"`
 }
 
+type MailgunConfig struct {
+	APIKey       string `envconfig:"MAILGUN_API_KEY"`
+	PublicAPIKey string `envconfig:"MAILGUN_PUBLIC_API_KEY"`
+	Domain       string `envconfig:"MAILGUN_DOMAIN"`
+}
+
 type Config struct {
 	Port     int
 	Env      string
 	Pepper   string
 	HMACKey  string `split_words:"true"`
 	Database PostgresConfig
+	Mailgun  MailgunConfig
 }
 
 func NewConfig(configRequired bool) Config {

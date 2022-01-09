@@ -71,10 +71,11 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 
 	url, err := u.r.Get(IndexGalleries).URL()
 	if err != nil {
-		views.RedirectAlert(w, r, "/", http.StatusFound, views.AlertError(fmt.Sprintf("Something went wrong: %s", err))
+		vd.AlertError(fmt.Sprintf("Something went wrong: %s", err))
+		views.RedirectAlert(w, r, "/", http.StatusFound, *vd.Alert)
 		return
 	}
-	views.RedirectAlert(w, r, "/galleries", http.StatusFound, views.Alert{
+	views.RedirectAlert(w, r, url.Path, http.StatusFound, views.Alert{
 		Level:   views.AlertLvlSuccess,
 		Message: fmt.Sprint("Welcome to Lenslocked.com, %s!", user.Name),
 	})
@@ -115,12 +116,13 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 
 	url, err := u.r.Get(IndexGalleries).URL()
 	if err != nil {
-		views.RedirectAlert(w, r, "/", http.StatusFound, views.AlertError(fmt.Sprintf("Something went wrong: %s", err))
+		vd.AlertError(fmt.Sprintf("Something went wrong: %s", err))
+		views.RedirectAlert(w, r, "/", http.StatusFound, *vd.Alert)
 		return
 	}
-	views.RedirectAlert(w, r, "/galleries", http.StatusFound, views.Alert{
+	views.RedirectAlert(w, r, url.Path, http.StatusFound, views.Alert{
 		Level:   views.AlertLvlSuccess,
-		Message: fmt.Sprint("Welcome to Lenslocked.com, %s!", user.Name),
+		Message: fmt.Sprintf("Welcome to Lenslocked.com, %s!", user.Name),
 	})
 }
 
