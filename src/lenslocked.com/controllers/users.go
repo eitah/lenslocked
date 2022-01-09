@@ -40,7 +40,9 @@ type SignupForm struct {
 
 // GET /signup
 func (u *Users) New(w http.ResponseWriter, r *http.Request) {
-	u.NewView.Render(w, r, nil)
+	var form SignupForm
+	parseURLParams(r, &form) // ensures that if there is form data in query params will be prefilled.
+	u.NewView.Render(w, r, form)
 }
 
 // POST /signup
@@ -48,7 +50,7 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	var vd views.Data
 	var form SignupForm
 	vd.Yield = &form // persist data on redirect. note we have to use a pointer here to make sure as values are updated form remembers data too.
-	if err := ParseForm(r, &form); err != nil {
+	if err := parseForm(r, &form); err != nil {
 		vd.SetAlert(err)
 		u.NewView.Render(w, r, vd)
 		return
@@ -99,7 +101,7 @@ type LoginForm struct {
 func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 	var vd views.Data
 	var form LoginForm
-	if err := ParseForm(r, &form); err != nil {
+	if err := parseForm(r, &form); err != nil {
 		vd.SetAlert(err)
 		u.LoginView.Render(w, r, vd)
 		return

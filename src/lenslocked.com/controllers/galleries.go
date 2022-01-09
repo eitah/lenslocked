@@ -66,7 +66,7 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 	var vd views.Data
 	var form GalleryForm
 
-	if err := ParseForm(r, &form); err != nil {
+	if err := parseForm(r, &form); err != nil {
 		vd.SetAlert(err)
 		g.NewView.Render(w, r, vd)
 		return
@@ -144,7 +144,7 @@ func (g *Galleries) Update(w http.ResponseWriter, r *http.Request) {
 	var vd views.Data
 	vd.Yield = gallery
 	var form GalleryForm
-	if err := ParseForm(r, &form); err != nil {
+	if err := parseForm(r, &form); err != nil {
 		vd.SetAlert(err)
 		g.EditView.Render(w, r, vd)
 	}
