@@ -73,7 +73,7 @@ func (s *Services) Close() {
 //   1) calls drop table if exists method
 //   2) rebuild the users table using autoMigrate
 func (s *Services) DestructiveReset() error {
-	if err := s.db.DropTableIfExists(&User{}, &Gallery{}).Error; err != nil {
+	if err := s.db.DropTableIfExists(&User{}, &Gallery{}, &pwReset{}).Error; err != nil {
 		return err
 	}
 	return s.AutoMigrate()
@@ -82,7 +82,7 @@ func (s *Services) DestructiveReset() error {
 // Automigrate will attempt to auto migrate the users table - its a prod
 // safe version of destructivereset
 func (s *Services) AutoMigrate() error {
-	if err := s.db.AutoMigrate(&User{}, &Gallery{}).Error; err != nil {
+	if err := s.db.AutoMigrate(&User{}, &Gallery{}, &pwReset{}).Error; err != nil {
 		return err
 	}
 	return nil

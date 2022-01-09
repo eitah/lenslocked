@@ -1,8 +1,10 @@
 package models
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/eitah/lenslocked/src/lenslocked.com/hash"
 	"github.com/eitah/lenslocked/src/lenslocked.com/rand"
@@ -31,6 +33,8 @@ var (
 	ErrRememberRequired modelError = "models: remember token is required"
 	// ErrRememberTooShort means our remember token is somehow invalid
 	ErrRememberTooShort modelError = "models: remmember token too short"
+	// ErrPWResetTokenInvalid means our password Reset Token is somehow invalid
+	ErrPWResetTokenInvalid modelError = "models: password reset token provided is invalid"
 )
 
 type modelError string
@@ -66,12 +70,22 @@ type UserService interface {
 	// If they are correct the user corresponding to the email will be returned.
 	// Otherwise you get an error if something goes wrong.
 	Authenticate(email, password string) (*User, error)
+	// InitiateReset will complete all the model related tasks to start the pw reset
+	// process for the user with the provided email address. Once completed, it will
+	// return the token, or an error if there is one
+	InitiateReset(email string) (string, error)
+	// CompleteReset will complete all the model-related tasks to complete the password
+	// reset process for the user that the token matches, incuding updating that users
+	// password. If the token has expired or if it is invalid for any other reason, the
+	// ErrTokenInvalid error will be returned.
+	CompleteReset(token, newPw string) (*User, error)
 	UserDB
 }
 
 type userService struct {
 	UserDB
-	pepper string
+	pepper    string
+	pwResetDB pwResetDB
 }
 
 type userValidator struct {
@@ -110,8 +124,9 @@ func NewUserService(db *gorm.DB, pepper, hmacSecretKey string) UserService {
 	hmac := hash.NewHMAC(hmacSecretKey)
 	uv := NewUserValidator(ug, hmac, pepper)
 	return &userService{
-		UserDB: uv,
-		pepper: pepper,
+		UserDB:    uv,
+		pepper:    pepper,
+		pwResetDB: NewPwResetValidator(&pwResetGorm{db: db}, hmac),
 	}
 }
 
@@ -438,21 +453,45 @@ func runUserValFns(user *User, fns ...userValFn) error {
 	return nil
 }
 
-// Nonprod feature
-//   1) calls drop table if exists method
-//   2) rebuild the users table using autoMigrate
-func (ug *userGorm) DestructiveReset() error {
-	if err := ug.db.DropTableIfExists(&User{}).Error; err != nil {
-		return err
+func (us *userService) InitiateReset(email string) (string, error) {
+	user, err := us.ByEmail(email)
+	if err != nil {
+		return "", err
 	}
-	return ug.AutoMigrate()
+	pwr := pwReset{
+		UserID: user.ID,
+	}
+	if err := us.pwResetDB.Create(&pwr); err != nil {
+		return "", err
+	}
+	return pwr.Token, nil
 }
 
-// Automigrate will attempt to auto migrate the users table - its a prod
-// safe version of destructivereset
-func (ug *userGorm) AutoMigrate() error {
-	if err := ug.db.AutoMigrate(&User{}).Error; err != nil {
-		return err
+func (us *userService) CompleteReset(token, newPw string) (*User, error) {
+	pwr, err := us.pwResetDB.ByToken(token)
+	if err != nil {
+		if err == ErrNotFound {
+			return nil, ErrPWResetTokenInvalid
+		}
+		return nil, err
 	}
-	return nil
+	// todo if the pw reset is over 12 hours old it is invalid and should return
+	// the err token invalid error
+	duration := time.Since(pwr.CreatedAt)
+	if duration > 12*time.Hour {
+		fmt.Printf("Password Reset token for user %d is too old: %d\n", pwr.UserID, duration)
+		return nil, ErrPWResetTokenInvalid
+	}
+
+	user, err := us.ByID(pwr.UserID)
+	if err != nil {
+		return nil, err
+	}
+	user.Password = newPw
+	err = us.Update(user)
+	if err != nil {
+		return nil, err
+	}
+	us.pwResetDB.Delete(pwr.ID)
+	return user, nil
 }
