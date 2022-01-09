@@ -249,10 +249,11 @@ func (u *Users) InitiateReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	views.RedirectAlert(w, r, fmt.Sprintf("/reset?token=%s", token), http.StatusFound, views.Alert{
+	vd.Alert = &views.Alert{
 		Level:   views.AlertLvlSuccess,
-		Message: fmt.Sprintf("Reset password sent to %s! You have 12 hours. %s", form.Email, token),
-	})
+		Message: fmt.Sprintf("Reset password sent to %s! You have 12 hours.", form.Email),
+	}
+	u.ForgotPWView.Render(w, r, vd)
 }
 
 // CompleteReset concludes a reset password flow

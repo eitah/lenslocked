@@ -52,8 +52,9 @@ Best,<br/>
 LensLocked Support<br/>
 `
 
-// const resetBaseURL = "https://itah-lenslocked.herokuapp.com/reset"
-const resetBaseURL = "localhost:3000/reset"
+const resetBaseURL = "https://itah-lenslocked.herokuapp.com/reset"
+
+// const resetBaseURL = "localhost:3000/reset"
 
 func (m *EmailClient) SendForgotPasswordEmail(token string) error {
 	from := "support@lenslocked.com"
