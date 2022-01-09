@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/kelseyhightower/envconfig"
@@ -8,10 +9,10 @@ import (
 
 type PostgresConfig struct {
 	Host        string `envconfig:"PGHOST"`
+	Name        string `envconfig:"PGDATABASE"`
 	Port        int    `envconfig:"PGPORT"`
 	User        string `envconfig:"PGUSER"`
 	Password    string `envconfig:"PGPASSWORD"`
-	Name        string `envconfig:"PGNAME"`
 	DatabaseURL string `envconfig:"DATABASE_URL"`
 }
 
@@ -69,9 +70,15 @@ func (c PostgresConfig) Dialect() string {
 }
 
 func (c PostgresConfig) ConnectionInfo() string {
-	return c.DatabaseURL + "?require"
-	// if c.Password == "" {
-	// 	return fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", c.Host, c.Port, c.User, c.Name)
-	// }
-	// return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", c.Host, c.Port, c.User, c.Password, c.Name)
+	// return c.DatabaseURL + "?sslmode=require" 	// this randomly just stopped working and IDK why.
+	sslMode := "disable"
+	if c.Host != "localhost" {
+		// heroku requires ssl but localhost doesnt
+		sslMode = "require"
+	}
+
+	if c.Password == "" {
+		return fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=%s", c.Host, c.Port, c.User, c.Name, sslMode)
+	}
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", c.Host, c.Port, c.User, c.Password, c.Name, sslMode)
 }

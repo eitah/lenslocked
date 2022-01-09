@@ -47,6 +47,7 @@ func (u *Users) New(w http.ResponseWriter, r *http.Request) {
 func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	var vd views.Data
 	var form SignupForm
+	vd.Yield = &form // persist data on redirect. note we have to use a pointer here to make sure as values are updated form remembers data too.
 	if err := ParseForm(r, &form); err != nil {
 		vd.SetAlert(err)
 		u.NewView.Render(w, r, vd)
