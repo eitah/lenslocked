@@ -1,13 +1,18 @@
 package models
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 
+	"cloud.google.com/go/storage"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/jinzhu/gorm"
+	"google.golang.org/api/iterator"
 )
 
 // Image is used to represent images stored in a gallery.
@@ -37,12 +42,14 @@ type ImageService interface {
 }
 
 type imageService struct {
-	db *gorm.DB
+	db  *gorm.DB
+	bkt *storage.BucketHandle
 }
 
-func NewImageService(db *gorm.DB) ImageService {
+func NewImageService(db *gorm.DB, bkt *storage.BucketHandle) ImageService {
 	return &imageService{
-		db: db,
+		db:  db,
+		bkt: bkt,
 	}
 }
 
@@ -51,26 +58,77 @@ func (is *imageService) Create(galleryID uint, r io.Reader, filename string) err
 	if err != nil {
 		return err
 	}
-
-	dst, err := os.Create(filepath.Join(galleryPath, filename))
-	if err != nil {
-		return err
+	path := filepath.Join(galleryPath, filename)
+	obj := is.bkt.Object(path)
+	w := obj.NewWriter(context.Background())
+	if _, err := io.Copy(w, r); err != nil {
+		panic(err)
 	}
-	defer dst.Close()
-
-	if _, err = io.Copy(dst, r); err != nil {
-		return err
+	if err := w.Close(); err != nil {
+		panic(err)
 	}
 
 	return nil
 }
 
 func (is *imageService) Delete(i *Image) error {
+	ctx := context.Background()
+	if err := is.bkt.Object(i.Filename).Delete(ctx); err != nil {
+		return err
+	}
+
 	return os.Remove(i.RelativePath())
 }
 
 func (is *imageService) ByGalleryID(galleryID uint) ([]Image, error) {
 	dir := is.imageDir(galleryID)
+
+	ctx := context.Background()
+	itr := is.bkt.Objects(ctx, &storage.Query{Prefix: dir})
+	var done bool
+
+	var imgs int
+	for !done {
+		img, err := itr.Next()
+		if err == iterator.Done {
+			break
+		} else {
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		// check if file exists before fetching again
+		if _, err := os.Stat(img.Name); err == nil {
+			// path/to/whatever exists so just exit range loop
+			continue
+		} else if errors.Is(err, os.ErrNotExist) {
+			// path/to/whatever does *not* exist
+
+			obj := is.bkt.Object(img.Name)
+			r, err := obj.NewReader(ctx)
+			if err != nil {
+				panic(err)
+			}
+
+			dst, err := os.Create(img.Name)
+			if err != nil {
+				return nil, err
+			}
+			defer dst.Close()
+
+			// todo feature to not download images again.
+			if _, err = io.Copy(dst, r); err != nil {
+				return nil, err
+			}
+			imgs++
+		} else {
+			return nil, err
+		}
+	}
+
+	spew.Printf("all done with downloads: %d", imgs)
+
 	strings, err := filepath.Glob(filepath.Join(dir, "*"))
 	if err != nil {
 		return nil, err
