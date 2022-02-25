@@ -24,12 +24,14 @@ type MailgunConfig struct {
 }
 
 type Config struct {
-	Port     int
-	Env      string
-	Pepper   string
-	HMACKey  string `split_words:"true"`
-	Database PostgresConfig
-	Mailgun  MailgunConfig
+	Port          int
+	Env           string
+	Pepper        string
+	HMACKey       string `split_words:"true"`
+	Database      PostgresConfig
+	Mailgun       MailgunConfig
+	Bucket        string `envconfig:"CLOUD_BUCKET"`
+	CredsFilePath string
 }
 
 func NewConfig(configRequired bool) Config {
@@ -43,11 +45,13 @@ func NewConfig(configRequired bool) Config {
 
 func DefaultConfig() Config {
 	return Config{
-		Port:     3000,
-		Env:      "dev",
-		Pepper:   "secret-random-string",
-		HMACKey:  "secret-hmac-key",
-		Database: DefaultPostgresConfig(),
+		Port:          3000,
+		Env:           "dev",
+		Pepper:        "secret-random-string",
+		HMACKey:       "secret-hmac-key",
+		Database:      DefaultPostgresConfig(),
+		Bucket:        "not-the-real-bucket",
+		CredsFilePath: "./creds.json",
 	}
 }
 

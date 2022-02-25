@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
 
+	"cloud.google.com/go/storage"
 	"github.com/eitah/lenslocked/src/lenslocked.com/controllers"
 	"github.com/eitah/lenslocked/src/lenslocked.com/email"
 	"github.com/eitah/lenslocked/src/lenslocked.com/middleware"
@@ -13,6 +15,7 @@ import (
 	"github.com/eitah/lenslocked/src/lenslocked.com/views"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
+	"google.golang.org/api/option"
 
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
@@ -32,13 +35,20 @@ func main() {
 	flag.Parse()
 	config := NewConfig(*boolPtr)
 	mgCfg := config.Mailgun
+
+	storageClient, err := storage.NewClient(context.Background(), option.WithCredentialsFile(config.CredsFilePath))
+	if err != nil {
+		panic(err)
+	}
+	bkt := storageClient.Bucket(config.Bucket)
+
 	emailClient := email.NewEmailClient(mgCfg.Domain, mgCfg.APIKey, mgCfg.PublicAPIKey, mgCfg.ElisEmailAddress)
 	services, err := models.NewServices(
 		models.WithGorm(config.Database.Dialect(), config.Database.ConnectionInfo()),
 		models.WithLogMode(!config.IsProd()),
 		models.WithUser(config.Pepper, config.HMACKey),
 		models.WithGallery(),
-		models.WithImage(),
+		models.WithImage(bkt),
 	)
 	if err != nil {
 		panic(err)

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/eitah/lenslocked/src/lenslocked.com/context"
 	"github.com/eitah/lenslocked/src/lenslocked.com/models"
 	"github.com/eitah/lenslocked/src/lenslocked.com/views"
@@ -298,6 +299,7 @@ func (g *Galleries) ImageUpload(w http.ResponseWriter, r *http.Request) {
 
 		g.ImageService.Create(gallery.ID, file, f.Filename)
 		if err != nil {
+			spew.Dump(err)
 			vd.SetAlert(err)
 			g.EditView.Render(w, r, vd)
 			return

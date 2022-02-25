@@ -1,6 +1,7 @@
 package models
 
 import (
+	"cloud.google.com/go/storage"
 	"github.com/jinzhu/gorm"
 )
 
@@ -58,9 +59,9 @@ func WithGallery() ServicesConfig {
 	}
 }
 
-func WithImage() ServicesConfig {
+func WithImage(bkt *storage.BucketHandle) ServicesConfig {
 	return func(s *Services) error {
-		s.Image = NewImageService(s.db)
+		s.Image = NewImageService(s.db, bkt)
 		return nil
 	}
 }
