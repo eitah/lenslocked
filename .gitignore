@@ -6,3 +6,5 @@ modd.conf
 src/lenslocked.com/images/**
 src/lenslocked.com/.config
 src/lenslocked.com/.envrc
+# Creds for service account
+creds.json
